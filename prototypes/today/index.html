@@ -54,9 +54,9 @@
 
       .app-header {
         min-height: 68px;
-        display: flex;
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
         align-items: center;
-        justify-content: space-between;
         gap: 24px;
         padding: 0 32px;
         border-bottom: 1px solid var(--line);
@@ -87,13 +87,6 @@
         font-weight: 600;
       }
 
-      .prototype-mark {
-        color: var(--muted);
-        font-size: 0.78rem;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-      }
-
       main {
         width: min(100% - 40px, 1080px);
         margin: 0 auto;
@@ -122,21 +115,6 @@
         justify-content: space-between;
         gap: 24px;
         padding-bottom: 30px;
-      }
-
-      .progress-line {
-        width: min(230px, 35vw);
-        height: 4px;
-        overflow: hidden;
-        border-radius: 999px;
-        background: var(--line);
-      }
-
-      .progress-line > span {
-        display: block;
-        height: 100%;
-        background: var(--mint-strong);
-        transition: width 180ms ease-out;
       }
 
       .task-section + .task-section { margin-top: 38px; }
@@ -276,11 +254,6 @@
         position: sticky;
         top: 28px;
         align-self: start;
-      }
-
-      .variant-b .side-day .progress-line {
-        width: 100%;
-        margin: 22px 0 34px;
       }
 
       .variant-b .task-list .task-row:first-child {
@@ -439,10 +412,8 @@
 
       @media (max-width: 760px) {
         .app-header { padding: 0 18px; gap: 10px; }
-        .prototype-mark { display: none; }
         main { width: min(100% - 28px, 720px); padding-top: 38px; }
         .today-heading { align-items: start; flex-direction: column; }
-        .today-heading .progress-line { width: 100%; }
         .variant-b { display: block; }
         .variant-b .side-day { position: static; margin-bottom: 42px; }
         .variant-c .meaning-first .coverage { grid-template-columns: 1fr; }
@@ -547,7 +518,6 @@
               <button class="nav-link" data-view="today" ${view === "today" ? 'aria-current="page"' : ""}>Today</button>
               <button class="nav-link" data-view="tasks" ${view === "tasks" ? 'aria-current="page"' : ""}>Tasks</button>
             </nav>
-            <span class="prototype-mark">Prototype</span>
           </header>`;
       }
 
@@ -555,12 +525,6 @@
         const complete = completedTasks().length;
         const open = openTasks().length;
         return `${complete} complete · ${open} open`;
-      }
-
-      function progress() {
-        const total = todayTasks().length;
-        const percent = total ? (completedTasks().length / total) * 100 : 0;
-        return `<div class="progress-line" aria-label="${countCopy()}"><span style="width:${percent}%"></span></div>`;
       }
 
       function taskRows(list, state) {
@@ -609,7 +573,6 @@
                 <p class="eyebrow">${date}</p>
                 <h1>Today</h1>
                 <p class="day-counts">${countCopy()}</p>
-                ${progress()}
                 ${coverage()}
               </aside>
               <div>
@@ -631,7 +594,6 @@
             <main class="variant-c">
               <div class="today-heading">
                 <div><p class="eyebrow">${date}</p><h1>Today</h1><p class="day-counts">${countCopy()}</p></div>
-                ${progress()}
               </div>
               <section class="meaning-first">
                 ${coverage()}
@@ -644,7 +606,6 @@
           <main class="variant-a">
             <div class="today-heading">
               <div><p class="eyebrow">${date}</p><h1>Today</h1><p class="day-counts">${countCopy()}</p></div>
-              ${progress()}
             </div>
             ${sections()}
             ${coverage()}
