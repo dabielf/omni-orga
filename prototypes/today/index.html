@@ -369,13 +369,47 @@
 
       .task-manager-row.is-selected { background: var(--surface-soft); }
 
-      .plan-button {
+      .plan-menu { position: relative; }
+      .plan-menu summary {
+        min-width: 78px;
         border: 1px solid var(--line);
         border-radius: 8px;
         background: var(--surface);
         padding: 7px 10px;
         cursor: pointer;
+        list-style: none;
+        text-align: center;
       }
+
+      .plan-menu summary::-webkit-details-marker { display: none; }
+      .plan-options {
+        position: absolute;
+        z-index: 10;
+        top: calc(100% + 7px);
+        right: 0;
+        width: 210px;
+        display: grid;
+        gap: 5px;
+        padding: 8px;
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        background: var(--surface);
+        box-shadow: 0 12px 30px oklch(30% 0.02 150 / 0.14);
+      }
+
+      .plan-options button {
+        border: 0;
+        border-radius: 7px;
+        background: transparent;
+        padding: 8px;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .plan-options button:hover { background: var(--surface-soft); }
+      .plan-date { margin: 3px 0 !important; padding: 7px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+      .plan-date span { color: var(--muted); font-size: 0.8rem; }
+      .plan-date input { width: 100%; min-height: 36px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); padding: 5px 7px; }
 
       dialog {
         width: min(92vw, 440px);
@@ -493,15 +527,20 @@
       };
 
       const goals = ["Financial stability", "Self-care", "Home", "Write regularly"];
+      const dateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      const todayKey = dateKey(new Date());
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowKey = dateKey(tomorrow);
       let completionClock = 2;
       let tasks = [
-        { id: "invoice", title: "Send August invoice", goal: "Financial stability", today: true, complete: false, order: 0 },
-        { id: "dentist", title: "Book dentist appointment", goal: "Self-care", today: true, complete: false, order: 1 },
-        { id: "dinners", title: "Plan three simple dinners", goal: "Self-care", today: true, complete: false, order: 2 },
-        { id: "medicine", title: "Take morning medicine", goal: "Self-care", today: true, complete: true, order: 3, completedAt: 1 },
-        { id: "dishwasher", title: "Empty dishwasher", goal: "Home", today: true, complete: true, order: 4, completedAt: 2 },
-        { id: "statement", title: "Download bank statement", goal: "Financial stability", today: false, complete: false, order: 5 },
-        { id: "outline", title: "Outline next article", goal: "Write regularly", today: false, complete: false, order: 6 },
+        { id: "invoice", title: "Send August invoice", goal: "Financial stability", scheduledDay: todayKey, complete: false, order: 0 },
+        { id: "dentist", title: "Book dentist appointment", goal: "Self-care", scheduledDay: todayKey, complete: false, order: 1 },
+        { id: "dinners", title: "Plan three simple dinners", goal: "Self-care", scheduledDay: todayKey, complete: false, order: 2 },
+        { id: "medicine", title: "Take morning medicine", goal: "Self-care", scheduledDay: todayKey, complete: true, order: 3, completedAt: 1 },
+        { id: "dishwasher", title: "Empty dishwasher", goal: "Home", scheduledDay: todayKey, complete: true, order: 4, completedAt: 2 },
+        { id: "statement", title: "Download bank statement", goal: "Financial stability", scheduledDay: null, complete: false, order: 5 },
+        { id: "outline", title: "Outline next article", goal: "Write regularly", scheduledDay: null, complete: false, order: 6 },
       ];
       let toastTaskId = null;
       let toastTimer = null;
@@ -534,7 +573,7 @@
         render();
       }
 
-      const todayTasks = () => tasks.filter((task) => task.today);
+      const todayTasks = () => tasks.filter((task) => task.scheduledDay === todayKey);
       const openTasks = () => todayTasks().filter((task) => !task.complete).sort((a, b) => a.order - b.order);
       const completedTasks = () => todayTasks().filter((task) => task.complete).sort((a, b) => b.completedAt - a.completedAt);
 
@@ -548,6 +587,36 @@
             <span title="${escapeHtml(url)}">${escapeHtml(url)}</span>
             <button class="secondary-button" type="button" data-remove-link="${index}">Remove</button>
           </li>`).join("");
+      }
+
+      function scheduleLabel(day) {
+        if (!day) return "Plan";
+        if (day === todayKey) return "Today";
+        if (day === tomorrowKey) return "Tomorrow";
+        return new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(new Date(`${day}T12:00:00`));
+      }
+
+      function planMenu(task) {
+        if (task.complete) return `<span class="task-meta">${scheduleLabel(task.scheduledDay)}</span>`;
+        return `
+          <details class="plan-menu" name="task-plan">
+            <summary>${scheduleLabel(task.scheduledDay)}</summary>
+            <div class="plan-options">
+              <button data-plan-today="${task.id}">Today</button>
+              <button data-plan-tomorrow="${task.id}">Tomorrow</button>
+              <label class="plan-date"><span>Pick a date</span><input type="date" data-plan-date="${task.id}" value="${task.scheduledDay || ""}" /></label>
+              <button data-clear-day="${task.id}">Clear date</button>
+            </div>
+          </details>`;
+      }
+
+      function planTask(id, day) {
+        const task = tasks.find((item) => item.id === id);
+        if (!task) return;
+        const wasToday = task.scheduledDay === todayKey;
+        task.scheduledDay = day;
+        if (!wasToday && day === todayKey) task.order = Math.max(0, ...tasks.map((item) => item.order)) + 1;
+        render();
       }
 
       function header(view) {
@@ -656,9 +725,7 @@
         const visibleTasks = goalFilter ? tasks.filter((task) => task.goal === goalFilter) : tasks;
         return `
           <main class="tasks-view">
-            <p class="eyebrow">Planning and task management</p>
             <h1>${goalFilter ? escapeHtml(goalFilter) : "Tasks"}</h1>
-            <p class="day-counts">Create, edit, and plan tasks here. This screen is only a rough boundary for the Today prototype.</p>
             <div class="tasks-toolbar">
               <strong>${visibleTasks.length} tasks</strong>
               <button class="primary-button" data-create-task>New task</button>
@@ -670,7 +737,7 @@
                     <div class="task-title">${escapeHtml(task.title)}</div>
                     <div class="task-meta">${escapeHtml(task.goal || "No goal")} · ${task.complete ? "Complete" : "Available"}</div>
                   </div>
-                  <button class="plan-button" data-toggle-today="${task.id}">${task.today ? "Remove from Today" : "Add to Today"}</button>
+                  ${planMenu(task)}
                 </div>`).join("")}
             </div>
           </main>`;
@@ -737,13 +804,14 @@
         const undoId = target.closest("[data-undo-task]")?.dataset.undoTask;
         if (undoId) completeTask(undoId, false);
 
-        const toggleId = target.closest("[data-toggle-today]")?.dataset.toggleToday;
-        if (toggleId) {
-          const task = tasks.find((item) => item.id === toggleId);
-          task.today = !task.today;
-          if (task.today) task.order = Math.max(0, ...tasks.map((item) => item.order)) + 1;
-          render();
-        }
+        const planTodayId = target.closest("[data-plan-today]")?.dataset.planToday;
+        if (planTodayId) planTask(planTodayId, todayKey);
+
+        const planTomorrowId = target.closest("[data-plan-tomorrow]")?.dataset.planTomorrow;
+        if (planTomorrowId) planTask(planTomorrowId, tomorrowKey);
+
+        const clearDayId = target.closest("[data-clear-day]")?.dataset.clearDay;
+        if (clearDayId) planTask(clearDayId, null);
 
         if (target.closest("[data-create-task]")) createDialog.showModal();
       });
@@ -751,6 +819,9 @@
       app.addEventListener("change", (event) => {
         const id = event.target.dataset.completeTask;
         if (id) completeTask(id, event.target.checked);
+
+        const planDateId = event.target.dataset.planDate;
+        if (planDateId) planTask(planDateId, event.target.value || null);
       });
 
       createForm.addEventListener("submit", (event) => {
@@ -766,7 +837,7 @@
           goal: String(form.get("goal") || ""),
           notes: String(form.get("notes") || "").trim(),
           links: lastLink ? [...pendingLinks, lastLink] : [...pendingLinks],
-          today: form.get("today") === "on",
+          scheduledDay: form.get("today") === "on" ? todayKey : null,
           complete: false,
           order: Math.max(0, ...tasks.map((task) => task.order)) + 1,
         });
