@@ -312,31 +312,6 @@
       .switcher button:hover { background: oklch(38% 0.018 155); }
       .variant-name { padding: 0 10px; text-align: center; font-size: 0.86rem; }
 
-      .toast {
-        position: fixed;
-        z-index: 30;
-        right: 24px;
-        bottom: 24px;
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        min-height: 46px;
-        padding: 8px 9px 8px 16px;
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        background: var(--surface);
-        box-shadow: 0 10px 30px oklch(30% 0.02 150 / 0.16);
-      }
-
-      .toast button {
-        border: 0;
-        border-radius: 8px;
-        background: var(--mint);
-        padding: 7px 10px;
-        font-weight: 600;
-        cursor: pointer;
-      }
-
       .tasks-view { max-width: 860px; }
 
       .tasks-toolbar {
@@ -467,7 +442,6 @@
         .variant-c .meaning-first .coverage { grid-template-columns: 1fr; }
         .drag-cue { opacity: 0.6; }
         .switcher { bottom: 14px; }
-        .toast { right: 14px; bottom: 78px; }
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -542,8 +516,6 @@
         { id: "statement", title: "Download bank statement", goal: "Financial stability", scheduledDay: null, complete: false, order: 5 },
         { id: "outline", title: "Outline next article", goal: "Write regularly", scheduledDay: null, complete: false, order: 6 },
       ];
-      let toastTaskId = null;
-      let toastTimer = null;
       let pendingLinks = [];
 
       const app = document.querySelector("#app");
@@ -752,17 +724,11 @@
           </div>`;
       }
 
-      function toast() {
-        if (!toastTaskId) return "";
-        return `<div class="toast" role="status"><span>Task completed.</span><button data-undo-task="${toastTaskId}">Undo</button></div>`;
-      }
-
       function render() {
         const current = route();
         app.innerHTML = header(current.view)
           + (current.view === "today" ? todayView(current.variant) : tasksView(current.task, current.goal))
-          + (current.view === "today" ? switcher(current.variant) : "")
-          + toast();
+          + (current.view === "today" ? switcher(current.variant) : "");
       }
 
       function stepVariant(direction) {
@@ -777,12 +743,8 @@
         task.complete = complete;
         if (complete) {
           task.completedAt = ++completionClock;
-          toastTaskId = id;
-          clearTimeout(toastTimer);
-          toastTimer = setTimeout(() => { toastTaskId = null; render(); }, 5000);
         } else {
           delete task.completedAt;
-          if (toastTaskId === id) toastTaskId = null;
         }
         render();
       }
@@ -800,9 +762,6 @@
 
         const step = target.closest("[data-variant-step]")?.dataset.variantStep;
         if (step) stepVariant(Number(step));
-
-        const undoId = target.closest("[data-undo-task]")?.dataset.undoTask;
-        if (undoId) completeTask(undoId, false);
 
         const planTodayId = target.closest("[data-plan-today]")?.dataset.planToday;
         if (planTodayId) planTask(planTodayId, todayKey);
