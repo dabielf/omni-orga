@@ -404,6 +404,9 @@
       }
 
       .dialog-form textarea { min-height: 96px; resize: vertical; }
+      .more-options { margin-top: 18px; }
+      .more-options summary { width: fit-content; cursor: pointer; font-weight: 500; }
+      .more-options[open] summary { margin-bottom: 2px; }
       .dialog-group { margin: 18px 0 0; padding: 0; border: 0; }
       .dialog-group legend { margin-bottom: 7px; }
       .link-builder { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
@@ -457,18 +460,21 @@
             <option>Write regularly</option>
           </select>
         </label>
-        <label>
-          Notes
-          <textarea name="notes"></textarea>
-        </label>
-        <fieldset class="dialog-group">
-          <legend>Links</legend>
-          <div class="link-builder">
-            <input id="link-input" type="url" inputmode="url" placeholder="https://" />
-            <button class="secondary-button" type="button" data-add-link>Add link</button>
-          </div>
-          <ul class="link-list" id="pending-links"></ul>
-        </fieldset>
+        <details class="more-options">
+          <summary>More options</summary>
+          <label>
+            Notes
+            <textarea name="notes"></textarea>
+          </label>
+          <fieldset class="dialog-group">
+            <legend>Links</legend>
+            <div class="link-builder">
+              <input id="link-input" type="url" inputmode="url" placeholder="https://" />
+              <button class="secondary-button" type="button" data-add-link>Add link</button>
+            </div>
+            <ul class="link-list" id="pending-links"></ul>
+          </fieldset>
+        </details>
         <label class="dialog-check">
           <input name="today" type="checkbox" />
           Add to Today
