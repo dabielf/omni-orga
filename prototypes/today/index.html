@@ -298,16 +298,14 @@
       .variant-c { max-width: 820px; }
 
       .variant-c .meaning-first {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        align-items: start;
-        gap: 36px;
         padding: 28px 0 36px;
         border-top: 1px solid var(--line);
         border-bottom: 1px solid var(--line);
       }
 
-      .variant-c .meaning-first .coverage { min-width: 290px; }
+      .variant-c .meaning-first .coverage {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
       .variant-c .task-section:first-of-type { margin-top: 42px; }
       .variant-c .task-row { min-height: 58px; }
 
@@ -447,8 +445,7 @@
         .today-heading .progress-line { width: 100%; }
         .variant-b { display: block; }
         .variant-b .side-day { position: static; margin-bottom: 42px; }
-        .variant-c .meaning-first { grid-template-columns: 1fr; }
-        .variant-c .meaning-first .coverage { min-width: 0; }
+        .variant-c .meaning-first .coverage { grid-template-columns: 1fr; }
         .drag-cue { opacity: 0.6; }
         .switcher { bottom: 14px; }
         .toast { right: 14px; bottom: 78px; }
@@ -590,10 +587,10 @@
           </div>`;
       }
 
-      function sections() {
+      function sections(showOpenHeading = true) {
         return `
           <section class="task-section">
-            <h2>Still today</h2>
+            ${showOpenHeading ? "<h2>Still today</h2>" : ""}
             <div class="task-list" data-open-list>${taskRows(openTasks(), "open")}</div>
             <p class="hold-note">Long press, then drag to reorder.</p>
           </section>
@@ -637,10 +634,9 @@
                 ${progress()}
               </div>
               <section class="meaning-first">
-                <div><h2>What this day covers</h2><p class="day-counts">Planning stays in Tasks. These links take you there.</p></div>
                 ${coverage()}
               </section>
-              ${sections()}
+              ${sections(false)}
             </main>`;
         }
 
