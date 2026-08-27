@@ -391,7 +391,10 @@
 
       .dialog-form { padding: 26px; }
       .dialog-form label { display: grid; gap: 7px; margin-top: 18px; }
-      .dialog-form input[type="text"], .dialog-form select {
+      .dialog-form input[type="text"],
+      .dialog-form input[type="url"],
+      .dialog-form select,
+      .dialog-form textarea {
         width: 100%;
         min-height: 42px;
         border: 1px solid var(--line);
@@ -399,6 +402,14 @@
         background: var(--surface);
         padding: 8px 10px;
       }
+
+      .dialog-form textarea { min-height: 96px; resize: vertical; }
+      .dialog-group { margin: 18px 0 0; padding: 0; border: 0; }
+      .dialog-group legend { margin-bottom: 7px; }
+      .link-builder { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+      .link-list { display: grid; gap: 7px; margin: 10px 0 0; padding: 0; list-style: none; }
+      .link-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+      .link-list span { overflow: hidden; color: var(--muted); font-size: 0.86rem; text-overflow: ellipsis; white-space: nowrap; }
 
       .dialog-check { grid-template-columns: auto 1fr !important; align-items: center; }
       .dialog-actions { display: flex; justify-content: end; gap: 9px; margin-top: 28px; }
@@ -446,6 +457,18 @@
             <option>Write regularly</option>
           </select>
         </label>
+        <label>
+          Notes
+          <textarea name="notes"></textarea>
+        </label>
+        <fieldset class="dialog-group">
+          <legend>Links</legend>
+          <div class="link-builder">
+            <input id="link-input" type="url" inputmode="url" placeholder="https://" />
+            <button class="secondary-button" type="button" data-add-link>Add link</button>
+          </div>
+          <ul class="link-list" id="pending-links"></ul>
+        </fieldset>
         <label class="dialog-check">
           <input name="today" type="checkbox" />
           Add to Today
@@ -476,10 +499,13 @@
       ];
       let toastTaskId = null;
       let toastTimer = null;
+      let pendingLinks = [];
 
       const app = document.querySelector("#app");
       const createDialog = document.querySelector("#create-dialog");
       const createForm = document.querySelector("#create-form");
+      const linkInput = document.querySelector("#link-input");
+      const pendingLinksElement = document.querySelector("#pending-links");
 
       const route = () => {
         const params = new URL(location.href).searchParams;
@@ -508,6 +534,14 @@
 
       function escapeHtml(value) {
         return value.replace(/[&<>"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[character]);
+      }
+
+      function renderPendingLinks() {
+        pendingLinksElement.innerHTML = pendingLinks.map((url, index) => `
+          <li>
+            <span title="${escapeHtml(url)}">${escapeHtml(url)}</span>
+            <button class="secondary-button" type="button" data-remove-link="${index}">Remove</button>
+          </li>`).join("");
       }
 
       function header(view) {
@@ -719,17 +753,39 @@
         const form = new FormData(createForm);
         const title = String(form.get("title") || "").trim();
         if (!title) return;
+        const lastLink = linkInput.value.trim();
         tasks.push({
           id: `task-${Date.now()}`,
           title,
           goal: String(form.get("goal") || ""),
+          notes: String(form.get("notes") || "").trim(),
+          links: lastLink ? [...pendingLinks, lastLink] : [...pendingLinks],
           today: form.get("today") === "on",
           complete: false,
           order: Math.max(0, ...tasks.map((task) => task.order)) + 1,
         });
         createForm.reset();
+        pendingLinks = [];
+        renderPendingLinks();
         createDialog.close();
         render();
+      });
+
+      createForm.addEventListener("click", (event) => {
+        if (event.target.closest("[data-add-link]")) {
+          const url = linkInput.value.trim();
+          if (!url) return linkInput.focus();
+          if (!linkInput.checkValidity()) return linkInput.reportValidity();
+          pendingLinks.push(url);
+          linkInput.value = "";
+          renderPendingLinks();
+        }
+
+        const removeIndex = event.target.closest("[data-remove-link]")?.dataset.removeLink;
+        if (removeIndex !== undefined) {
+          pendingLinks.splice(Number(removeIndex), 1);
+          renderPendingLinks();
+        }
       });
 
       let hold = null;
