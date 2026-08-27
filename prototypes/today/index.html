@@ -1,0 +1,834 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Omni-orga Today prototype</title>
+    <!--
+      PROTOTYPE: throw this file away after the Today behavior is settled.
+      Question: Which Today layout feels like a place to do planned work, while Tasks owns all planning?
+      Three variants, switchable with ?variant=A, on one static route.
+      Scene: a tired user at home in daylight needs a quiet screen that asks for no planning.
+      Run: python3 -m http.server 8147 --bind 127.0.0.1 --directory prototypes/today
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Outfit, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: oklch(28% 0.014 155);
+        background: oklch(97.5% 0.009 150);
+        --ink: oklch(28% 0.014 155);
+        --muted: oklch(51% 0.018 155);
+        --faint: oklch(65% 0.014 155);
+        --line: oklch(89% 0.014 150);
+        --surface: oklch(99% 0.006 150);
+        --surface-soft: oklch(95% 0.015 150);
+        --mint: oklch(88% 0.07 150);
+        --mint-strong: oklch(45% 0.105 153);
+        --focus: oklch(52% 0.13 250);
+        --danger: oklch(52% 0.12 28);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        min-height: 100vh;
+        background: var(--surface);
+      }
+
+      button, input, select { font: inherit; }
+
+      button { color: inherit; }
+
+      button:focus-visible,
+      input:focus-visible,
+      select:focus-visible {
+        outline: 3px solid color-mix(in oklch, var(--focus) 45%, transparent);
+        outline-offset: 2px;
+      }
+
+      .app-header {
+        min-height: 68px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        padding: 0 32px;
+        border-bottom: 1px solid var(--line);
+        background: color-mix(in oklch, var(--surface) 94%, transparent);
+      }
+
+      .wordmark {
+        border: 0;
+        background: transparent;
+        font-weight: 600;
+        font-size: 1.05rem;
+        padding: 8px 0;
+        cursor: pointer;
+      }
+
+      .main-nav { display: flex; gap: 6px; }
+
+      .nav-link {
+        border: 0;
+        border-radius: 9px;
+        background: transparent;
+        padding: 8px 13px;
+        cursor: pointer;
+      }
+
+      .nav-link[aria-current="page"] {
+        background: var(--mint);
+        font-weight: 600;
+      }
+
+      .prototype-mark {
+        color: var(--muted);
+        font-size: 0.78rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      main {
+        width: min(100% - 40px, 1080px);
+        margin: 0 auto;
+        padding: 58px 0 110px;
+      }
+
+      h1, h2, p { margin-top: 0; }
+      h1 { margin-bottom: 8px; font-size: 2rem; line-height: 1.15; font-weight: 600; }
+      h2 { margin-bottom: 14px; font-size: 1rem; line-height: 1.25; font-weight: 600; }
+
+      .eyebrow {
+        margin-bottom: 10px;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .day-counts {
+        margin: 0;
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .today-heading {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 24px;
+        padding-bottom: 30px;
+      }
+
+      .progress-line {
+        width: min(230px, 35vw);
+        height: 4px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: var(--line);
+      }
+
+      .progress-line > span {
+        display: block;
+        height: 100%;
+        background: var(--mint-strong);
+        transition: width 180ms ease-out;
+      }
+
+      .task-section + .task-section { margin-top: 38px; }
+
+      .task-list {
+        border-top: 1px solid var(--line);
+      }
+
+      .task-row {
+        min-height: 68px;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 14px;
+        padding: 12px 4px;
+        border-bottom: 1px solid var(--line);
+        background: var(--surface);
+        transition: background 160ms ease-out, opacity 160ms ease-out;
+      }
+
+      .task-row[data-state="open"] { cursor: grab; }
+      .task-row[data-state="open"]:active { cursor: grabbing; }
+      .task-row.is-held {
+        background: var(--surface-soft);
+        box-shadow: 0 12px 30px oklch(30% 0.02 150 / 0.12);
+        opacity: 0.92;
+      }
+
+      .task-check {
+        width: 21px;
+        height: 21px;
+        margin: 0;
+        accent-color: var(--mint-strong);
+        cursor: pointer;
+      }
+
+      .task-copy { min-width: 0; }
+
+      .task-title {
+        max-width: 100%;
+        border: 0;
+        background: transparent;
+        padding: 3px 0;
+        font-weight: 500;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .task-title:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+      .task-meta {
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 0.82rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .task-row[data-state="complete"] .task-title {
+        color: var(--muted);
+        text-decoration: line-through;
+        text-decoration-thickness: 1px;
+      }
+
+      .drag-cue {
+        color: var(--faint);
+        font-size: 1rem;
+        letter-spacing: -2px;
+        opacity: 0;
+      }
+
+      .task-row[data-state="open"]:hover .drag-cue,
+      .task-row.is-held .drag-cue { opacity: 1; }
+
+      .empty {
+        padding: 22px 4px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+      }
+
+      .hold-note {
+        margin: 12px 0 0;
+        color: var(--muted);
+        font-size: 0.82rem;
+      }
+
+      .coverage {
+        display: grid;
+        gap: 18px;
+      }
+
+      .coverage-group p {
+        margin-bottom: 7px;
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 500;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .goal-links { display: flex; flex-wrap: wrap; gap: 7px; }
+
+      .goal-link {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: transparent;
+        padding: 6px 10px;
+        font-size: 0.85rem;
+        cursor: pointer;
+      }
+
+      .goal-link:hover { background: var(--surface-soft); }
+
+      .goal-link.covered {
+        border-color: transparent;
+        background: var(--mint);
+      }
+
+      /* A: list first */
+      .variant-a { max-width: 720px; }
+
+      .variant-a .coverage {
+        margin-top: 44px;
+        padding-top: 24px;
+        border-top: 1px solid var(--line);
+      }
+
+      /* B: the next task gets the visual lead */
+      .variant-b {
+        display: grid;
+        grid-template-columns: 235px minmax(0, 1fr);
+        gap: 66px;
+      }
+
+      .variant-b .side-day {
+        position: sticky;
+        top: 28px;
+        align-self: start;
+      }
+
+      .variant-b .side-day .progress-line {
+        width: 100%;
+        margin: 22px 0 34px;
+      }
+
+      .variant-b .task-list .task-row:first-child {
+        min-height: 114px;
+        margin-bottom: 22px;
+        padding: 22px 18px;
+        border: 1px solid color-mix(in oklch, var(--mint-strong) 22%, var(--line));
+        border-radius: 16px;
+        background: color-mix(in oklch, var(--mint) 38%, var(--surface));
+      }
+
+      .variant-b .task-list .task-row:first-child .task-title { font-size: 1.18rem; }
+
+      /* C: meaning first */
+      .variant-c { max-width: 820px; }
+
+      .variant-c .meaning-first {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: start;
+        gap: 36px;
+        padding: 28px 0 36px;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .variant-c .meaning-first .coverage { min-width: 290px; }
+      .variant-c .task-section:first-of-type { margin-top: 42px; }
+      .variant-c .task-row { min-height: 58px; }
+
+      .switcher {
+        position: fixed;
+        z-index: 20;
+        left: 50%;
+        bottom: 22px;
+        transform: translateX(-50%);
+        display: grid;
+        grid-template-columns: 38px minmax(170px, auto) 38px;
+        align-items: center;
+        gap: 3px;
+        padding: 5px;
+        border: 1px solid oklch(38% 0.014 155);
+        border-radius: 999px;
+        background: oklch(28% 0.014 155);
+        color: oklch(96% 0.008 150);
+        box-shadow: 0 10px 28px oklch(20% 0.02 150 / 0.22);
+      }
+
+      .switcher button {
+        min-height: 36px;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: inherit;
+        cursor: pointer;
+      }
+
+      .switcher button:hover { background: oklch(38% 0.018 155); }
+      .variant-name { padding: 0 10px; text-align: center; font-size: 0.86rem; }
+
+      .toast {
+        position: fixed;
+        z-index: 30;
+        right: 24px;
+        bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        min-height: 46px;
+        padding: 8px 9px 8px 16px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--surface);
+        box-shadow: 0 10px 30px oklch(30% 0.02 150 / 0.16);
+      }
+
+      .toast button {
+        border: 0;
+        border-radius: 8px;
+        background: var(--mint);
+        padding: 7px 10px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .tasks-view { max-width: 860px; }
+
+      .tasks-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin: 30px 0 20px;
+      }
+
+      .primary-button {
+        border: 0;
+        border-radius: 9px;
+        background: var(--mint-strong);
+        color: oklch(98% 0.006 150);
+        padding: 9px 14px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .task-manager-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 18px;
+        min-height: 70px;
+        padding: 11px 4px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .task-manager-row.is-selected { background: var(--surface-soft); }
+
+      .plan-button {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        padding: 7px 10px;
+        cursor: pointer;
+      }
+
+      dialog {
+        width: min(92vw, 440px);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: var(--surface);
+        color: var(--ink);
+        padding: 0;
+        box-shadow: 0 24px 80px oklch(20% 0.02 150 / 0.25);
+      }
+
+      dialog::backdrop { background: oklch(25% 0.012 155 / 0.28); }
+
+      .dialog-form { padding: 26px; }
+      .dialog-form label { display: grid; gap: 7px; margin-top: 18px; }
+      .dialog-form input[type="text"], .dialog-form select {
+        width: 100%;
+        min-height: 42px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        padding: 8px 10px;
+      }
+
+      .dialog-check { grid-template-columns: auto 1fr !important; align-items: center; }
+      .dialog-actions { display: flex; justify-content: end; gap: 9px; margin-top: 28px; }
+      .secondary-button {
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: transparent;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+
+      @media (max-width: 760px) {
+        .app-header { padding: 0 18px; gap: 10px; }
+        .prototype-mark { display: none; }
+        main { width: min(100% - 28px, 720px); padding-top: 38px; }
+        .today-heading { align-items: start; flex-direction: column; }
+        .today-heading .progress-line { width: 100%; }
+        .variant-b { display: block; }
+        .variant-b .side-day { position: static; margin-bottom: 42px; }
+        .variant-c .meaning-first { grid-template-columns: 1fr; }
+        .variant-c .meaning-first .coverage { min-width: 0; }
+        .drag-cue { opacity: 0.6; }
+        .switcher { bottom: 14px; }
+        .toast { right: 14px; bottom: 78px; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <dialog id="create-dialog">
+      <form class="dialog-form" method="dialog" id="create-form">
+        <h2>Create task</h2>
+        <label>
+          Task name
+          <input name="title" type="text" required autocomplete="off" />
+        </label>
+        <label>
+          Goal
+          <select name="goal">
+            <option value="">No goal</option>
+            <option>Financial stability</option>
+            <option>Self-care</option>
+            <option>Home</option>
+            <option>Write regularly</option>
+          </select>
+        </label>
+        <label class="dialog-check">
+          <input name="today" type="checkbox" />
+          Add to Today
+        </label>
+        <div class="dialog-actions">
+          <button class="secondary-button" value="cancel">Cancel</button>
+          <button class="primary-button" value="create">Create</button>
+        </div>
+      </form>
+    </dialog>
+    <script>
+      const variants = {
+        A: "Quiet list",
+        B: "Next first",
+        C: "Goals first",
+      };
+
+      const goals = ["Financial stability", "Self-care", "Home", "Write regularly"];
+      let completionClock = 2;
+      let tasks = [
+        { id: "invoice", title: "Send August invoice", goal: "Financial stability", today: true, complete: false, order: 0 },
+        { id: "dentist", title: "Book dentist appointment", goal: "Self-care", today: true, complete: false, order: 1 },
+        { id: "dinners", title: "Plan three simple dinners", goal: "Self-care", today: true, complete: false, order: 2 },
+        { id: "medicine", title: "Take morning medicine", goal: "Self-care", today: true, complete: true, order: 3, completedAt: 1 },
+        { id: "dishwasher", title: "Empty dishwasher", goal: "Home", today: true, complete: true, order: 4, completedAt: 2 },
+        { id: "statement", title: "Download bank statement", goal: "Financial stability", today: false, complete: false, order: 5 },
+        { id: "outline", title: "Outline next article", goal: "Write regularly", today: false, complete: false, order: 6 },
+      ];
+      let toastTaskId = null;
+      let toastTimer = null;
+
+      const app = document.querySelector("#app");
+      const createDialog = document.querySelector("#create-dialog");
+      const createForm = document.querySelector("#create-form");
+
+      const route = () => {
+        const params = new URL(location.href).searchParams;
+        const rawVariant = (params.get("variant") || "A").toUpperCase();
+        return {
+          variant: variants[rawVariant] ? rawVariant : "A",
+          view: params.get("view") === "tasks" ? "tasks" : "today",
+          task: params.get("task"),
+          goal: params.get("goal"),
+        };
+      };
+
+      function navigate(changes, replace = false) {
+        const url = new URL(location.href);
+        for (const [key, value] of Object.entries(changes)) {
+          if (value === null || value === undefined) url.searchParams.delete(key);
+          else url.searchParams.set(key, value);
+        }
+        history[replace ? "replaceState" : "pushState"]({}, "", url);
+        render();
+      }
+
+      const todayTasks = () => tasks.filter((task) => task.today);
+      const openTasks = () => todayTasks().filter((task) => !task.complete).sort((a, b) => a.order - b.order);
+      const completedTasks = () => todayTasks().filter((task) => task.complete).sort((a, b) => b.completedAt - a.completedAt);
+
+      function escapeHtml(value) {
+        return value.replace(/[&<>"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[character]);
+      }
+
+      function header(view) {
+        return `
+          <header class="app-header">
+            <button class="wordmark" data-view="today">omni-orga</button>
+            <nav class="main-nav" aria-label="Main navigation">
+              <button class="nav-link" data-view="today" ${view === "today" ? 'aria-current="page"' : ""}>Today</button>
+              <button class="nav-link" data-view="tasks" ${view === "tasks" ? 'aria-current="page"' : ""}>Tasks</button>
+            </nav>
+            <span class="prototype-mark">Prototype</span>
+          </header>`;
+      }
+
+      function countCopy() {
+        const complete = completedTasks().length;
+        const open = openTasks().length;
+        return `${complete} complete · ${open} open`;
+      }
+
+      function progress() {
+        const total = todayTasks().length;
+        const percent = total ? (completedTasks().length / total) * 100 : 0;
+        return `<div class="progress-line" aria-label="${countCopy()}"><span style="width:${percent}%"></span></div>`;
+      }
+
+      function taskRows(list, state) {
+        if (!list.length) return `<p class="empty">No ${state} tasks.</p>`;
+        return list.map((task) => `
+          <div class="task-row" data-task-id="${task.id}" data-state="${state}">
+            <input class="task-check" type="checkbox" data-complete-task="${task.id}" ${task.complete ? "checked" : ""} aria-label="${task.complete ? "Undo" : "Complete"} ${escapeHtml(task.title)}" />
+            <div class="task-copy">
+              <button class="task-title" data-open-task="${task.id}">${escapeHtml(task.title)}</button>
+              <div class="task-meta">${escapeHtml(task.goal || "No goal")}</div>
+            </div>
+            <span class="drag-cue" aria-hidden="true">⠿</span>
+          </div>`).join("");
+      }
+
+      function coverage() {
+        const covered = new Set(todayTasks().map((task) => task.goal).filter(Boolean));
+        const coveredLinks = goals.filter((goal) => covered.has(goal)).map((goal) => `<button class="goal-link covered" data-open-goal="${escapeHtml(goal)}">${escapeHtml(goal)}</button>`).join("");
+        const notCoveredLinks = goals.filter((goal) => !covered.has(goal)).map((goal) => `<button class="goal-link" data-open-goal="${escapeHtml(goal)}">${escapeHtml(goal)}</button>`).join("");
+        return `
+          <div class="coverage" aria-label="Goal coverage">
+            <div class="coverage-group"><p>Covered today</p><div class="goal-links">${coveredLinks || "None"}</div></div>
+            <div class="coverage-group"><p>Not covered today</p><div class="goal-links">${notCoveredLinks || "None"}</div></div>
+          </div>`;
+      }
+
+      function sections() {
+        return `
+          <section class="task-section">
+            <h2>Still today</h2>
+            <div class="task-list" data-open-list>${taskRows(openTasks(), "open")}</div>
+            <p class="hold-note">Long press, then drag to reorder.</p>
+          </section>
+          <section class="task-section">
+            <h2>Completed</h2>
+            <div class="task-list">${taskRows(completedTasks(), "complete")}</div>
+          </section>`;
+      }
+
+      function todayView(variant) {
+        const date = new Intl.DateTimeFormat("en", { weekday: "long", month: "long", day: "numeric" }).format(new Date());
+        if (variant === "B") {
+          return `
+            <main class="variant-b">
+              <aside class="side-day">
+                <p class="eyebrow">${date}</p>
+                <h1>Today</h1>
+                <p class="day-counts">${countCopy()}</p>
+                ${progress()}
+                ${coverage()}
+              </aside>
+              <div>
+                <section class="task-section">
+                  <h2>Up next</h2>
+                  <div class="task-list" data-open-list>${taskRows(openTasks(), "open")}</div>
+                  <p class="hold-note">Long press, then drag to reorder.</p>
+                </section>
+                <section class="task-section">
+                  <h2>Completed</h2>
+                  <div class="task-list">${taskRows(completedTasks(), "complete")}</div>
+                </section>
+              </div>
+            </main>`;
+        }
+
+        if (variant === "C") {
+          return `
+            <main class="variant-c">
+              <div class="today-heading">
+                <div><p class="eyebrow">${date}</p><h1>Today</h1><p class="day-counts">${countCopy()}</p></div>
+                ${progress()}
+              </div>
+              <section class="meaning-first">
+                <div><h2>What this day covers</h2><p class="day-counts">Planning stays in Tasks. These links take you there.</p></div>
+                ${coverage()}
+              </section>
+              ${sections()}
+            </main>`;
+        }
+
+        return `
+          <main class="variant-a">
+            <div class="today-heading">
+              <div><p class="eyebrow">${date}</p><h1>Today</h1><p class="day-counts">${countCopy()}</p></div>
+              ${progress()}
+            </div>
+            ${sections()}
+            ${coverage()}
+          </main>`;
+      }
+
+      function tasksView(selectedTaskId, goalFilter) {
+        const visibleTasks = goalFilter ? tasks.filter((task) => task.goal === goalFilter) : tasks;
+        return `
+          <main class="tasks-view">
+            <p class="eyebrow">Planning and task management</p>
+            <h1>${goalFilter ? escapeHtml(goalFilter) : "Tasks"}</h1>
+            <p class="day-counts">Create, edit, and plan tasks here. This screen is only a rough boundary for the Today prototype.</p>
+            <div class="tasks-toolbar">
+              <strong>${visibleTasks.length} tasks</strong>
+              <button class="primary-button" data-create-task>New task</button>
+            </div>
+            <div class="task-list">
+              ${visibleTasks.map((task) => `
+                <div class="task-manager-row ${task.id === selectedTaskId ? "is-selected" : ""}">
+                  <div class="task-copy">
+                    <div class="task-title">${escapeHtml(task.title)}</div>
+                    <div class="task-meta">${escapeHtml(task.goal || "No goal")} · ${task.complete ? "Complete" : "Available"}</div>
+                  </div>
+                  <button class="plan-button" data-toggle-today="${task.id}">${task.today ? "Remove from Today" : "Add to Today"}</button>
+                </div>`).join("")}
+            </div>
+          </main>`;
+      }
+
+      function switcher(variant) {
+        return `
+          <div class="switcher" aria-label="Prototype variants">
+            <button data-variant-step="-1" aria-label="Previous variant">←</button>
+            <span class="variant-name">${variant} · ${variants[variant]}</span>
+            <button data-variant-step="1" aria-label="Next variant">→</button>
+          </div>`;
+      }
+
+      function toast() {
+        if (!toastTaskId) return "";
+        return `<div class="toast" role="status"><span>Task completed.</span><button data-undo-task="${toastTaskId}">Undo</button></div>`;
+      }
+
+      function render() {
+        const current = route();
+        app.innerHTML = header(current.view)
+          + (current.view === "today" ? todayView(current.variant) : tasksView(current.task, current.goal))
+          + (current.view === "today" ? switcher(current.variant) : "")
+          + toast();
+      }
+
+      function stepVariant(direction) {
+        const keys = Object.keys(variants);
+        const index = keys.indexOf(route().variant);
+        navigate({ variant: keys[(index + direction + keys.length) % keys.length] }, true);
+      }
+
+      function completeTask(id, complete) {
+        const task = tasks.find((item) => item.id === id);
+        if (!task) return;
+        task.complete = complete;
+        if (complete) {
+          task.completedAt = ++completionClock;
+          toastTaskId = id;
+          clearTimeout(toastTimer);
+          toastTimer = setTimeout(() => { toastTaskId = null; render(); }, 5000);
+        } else {
+          delete task.completedAt;
+          if (toastTaskId === id) toastTaskId = null;
+        }
+        render();
+      }
+
+      app.addEventListener("click", (event) => {
+        const target = event.target;
+        const view = target.closest("[data-view]")?.dataset.view;
+        if (view) navigate({ view: view === "tasks" ? "tasks" : null, task: null, goal: null });
+
+        const taskId = target.closest("[data-open-task]")?.dataset.openTask;
+        if (taskId) navigate({ view: "tasks", task: taskId, goal: null });
+
+        const goal = target.closest("[data-open-goal]")?.dataset.openGoal;
+        if (goal) navigate({ view: "tasks", task: null, goal });
+
+        const step = target.closest("[data-variant-step]")?.dataset.variantStep;
+        if (step) stepVariant(Number(step));
+
+        const undoId = target.closest("[data-undo-task]")?.dataset.undoTask;
+        if (undoId) completeTask(undoId, false);
+
+        const toggleId = target.closest("[data-toggle-today]")?.dataset.toggleToday;
+        if (toggleId) {
+          const task = tasks.find((item) => item.id === toggleId);
+          task.today = !task.today;
+          if (task.today) task.order = Math.max(0, ...tasks.map((item) => item.order)) + 1;
+          render();
+        }
+
+        if (target.closest("[data-create-task]")) createDialog.showModal();
+      });
+
+      app.addEventListener("change", (event) => {
+        const id = event.target.dataset.completeTask;
+        if (id) completeTask(id, event.target.checked);
+      });
+
+      createForm.addEventListener("submit", (event) => {
+        if (event.submitter?.value !== "create") return;
+        event.preventDefault();
+        const form = new FormData(createForm);
+        const title = String(form.get("title") || "").trim();
+        if (!title) return;
+        tasks.push({
+          id: `task-${Date.now()}`,
+          title,
+          goal: String(form.get("goal") || ""),
+          today: form.get("today") === "on",
+          complete: false,
+          order: Math.max(0, ...tasks.map((task) => task.order)) + 1,
+        });
+        createForm.reset();
+        createDialog.close();
+        render();
+      });
+
+      let hold = null;
+
+      app.addEventListener("pointerdown", (event) => {
+        const row = event.target.closest('.task-row[data-state="open"]');
+        if (!row || event.target.closest("button, input, a")) return;
+        const startX = event.clientX;
+        const startY = event.clientY;
+        hold = { row, active: false, startX, startY, pointerId: event.pointerId };
+        hold.timer = setTimeout(() => {
+          if (!hold || hold.row !== row) return;
+          hold.active = true;
+          row.classList.add("is-held");
+          navigator.vibrate?.(18);
+        }, 450);
+      });
+
+      document.addEventListener("pointermove", (event) => {
+        if (!hold) return;
+        if (!hold.active) {
+          if (Math.hypot(event.clientX - hold.startX, event.clientY - hold.startY) > 8) {
+            clearTimeout(hold.timer);
+            hold = null;
+          }
+          return;
+        }
+        event.preventDefault();
+        const target = document.elementFromPoint(event.clientX, event.clientY)?.closest('.task-row[data-state="open"]');
+        if (!target || target === hold.row || target.parentElement !== hold.row.parentElement) return;
+        const midpoint = target.getBoundingClientRect().top + target.offsetHeight / 2;
+        target.parentElement.insertBefore(hold.row, event.clientY < midpoint ? target : target.nextSibling);
+      }, { passive: false });
+
+      document.addEventListener("pointerup", () => {
+        if (!hold) return;
+        clearTimeout(hold.timer);
+        if (hold.active) {
+          const ids = [...hold.row.parentElement.querySelectorAll('.task-row[data-state="open"]')].map((row) => row.dataset.taskId);
+          ids.forEach((id, index) => { tasks.find((task) => task.id === id).order = index; });
+        }
+        hold.row.classList.remove("is-held");
+        hold = null;
+        render();
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (route().view !== "today" || event.target.matches("input, textarea, select, [contenteditable]")) return;
+        if (event.key === "ArrowLeft") stepVariant(-1);
+        if (event.key === "ArrowRight") stepVariant(1);
+      });
+
+      addEventListener("popstate", render);
+
+      console.assert(new Set(tasks.map((task) => task.id)).size === tasks.length, "Prototype task IDs must be unique");
+      render();
+    </script>
+  </body>
+</html>
