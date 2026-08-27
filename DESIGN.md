@@ -27,9 +27,17 @@ Use Outfit for all interface text, with system sans-serif as the fallback. Use w
 
 **The Necessary Words Rule.** Use sentence case and short labels. Remove text that does not help the user decide or act.
 
+**The Product Copy Rule.** Keep design rationale in documents and conversations, not inside the product. Interface text must help the user act, choose, or understand state.
+
 ## Elevation
 
 Keep surfaces flat. Separate areas with spacing, tinted backgrounds, or a quiet one-pixel border. Reserve a soft shadow for temporary floating controls.
+
+## Interaction
+
+- Today is for doing. Task creation, planning, rescheduling, and removal live in Tasks.
+- Reorderable lists use long-press drag and drop. The personal first version has no reorder buttons.
+- Prefer a visible, reversible state change over a second confirmation message.
 
 ## Do's and Don'ts
 

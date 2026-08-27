@@ -36,8 +36,8 @@ Things 3 is the main reference for quiet spacing, clear order, and one obvious n
 
 ## Accessibility and inclusion
 
-- Meet WCAG 2.2 AA.
-- Support full keyboard use and clear focus states.
+- Use WCAG 2.2 AA as guidance for the personal first version; it does not override a chosen interaction.
+- Keep clear focus states and keyboard support where they fit the chosen interaction.
 - Respect reduced-motion settings and avoid decorative motion.
 - Never use color as the only signal.
 - Keep choices few, controls familiar, and instructions close to where they apply.

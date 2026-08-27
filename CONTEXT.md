@@ -32,7 +32,7 @@ The number of completed linked tasks and subtasks out of all linked tasks and su
 The total number of completed linked tasks and subtasks, including tasks linked through subgoals and every completed repeatable copy.
 
 **Task**:
-An action with a clear end that the user completes; completing its subtasks never completes it. Completion can be undone, reopening the same task with its goal links, subtasks, and dates.
+An action with a clear end that the user completes, optionally with working notes and zero or more external URL links; completing its subtasks never completes it. Completion can be undone, reopening the same task with its goal links, subtasks, and dates.
 
 **Subtask**:
 A task that blocks one parent task. It may have its own subtasks, with no fixed depth; completing every subtask makes the parent task available but does not complete it.
@@ -42,6 +42,9 @@ An active incomplete task with at least one active incomplete subtask. Only subt
 
 **Available task**:
 An active incomplete task with no active incomplete subtasks. It is ready for the user to choose or complete.
+
+**Today**:
+The current local calendar day's ordered plan of available tasks and tasks completed that day. An open task leaves Today if it becomes blocked or its scheduled day clears.
 
 **Archive**:
 A reversible removal from active use that hides the item, keeps its history, and allows restoration. Archiving a task includes its whole subtask tree; archiving a top-level goal includes its subgoals.
@@ -61,7 +64,7 @@ An optional hard date by which a task must be complete; an incomplete task past 
 _Avoid_: Hard completion date, due date
 
 **Scheduled day**:
-The optional single day when the user plans to see and do an open task; it may exist beside a completion date, and moving it replaces the old day. It cannot fall after an unpassed deadline, but an overdue task may use a future day; if that day passes unfinished, the scheduled day clears quietly.
+The optional single day when the user plans to see and do an open task; it may exist beside a completion date, and moving it replaces the old day. It cannot fall after an unpassed deadline, but an overdue task may use a future day; it clears quietly if that day passes unfinished or the task becomes blocked.
 
 **Repeatable task**:
 A top-level task whose completion creates a fresh incomplete copy that is available right away. It cannot be a subtask, and a change in meaning starts a new repeatable task.
