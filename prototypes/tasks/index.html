@@ -93,6 +93,17 @@ main { flex: 1; min-width: 0; }
 .rail-item:hover { background: var(--panel); color: var(--text); }
 .rail-item[aria-current="true"] { background: var(--mint-soft); color: var(--text); font-weight: 500; }
 .rail-item .count { font-size: 12px; color: var(--text-2); }
+.rail-goal-row { display: flex; align-items: center; gap: 2px; }
+.rail-goal-row .rail-item { flex: 1; min-width: 0; }
+.rail-disclosure {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 28px; flex: 0 0 auto; border-radius: 5px; color: var(--text-2);
+}
+.rail-disclosure:hover { background: var(--panel); color: var(--text); }
+.rail-disclosure[aria-expanded="true"] svg { transform: rotate(90deg); }
+.rail-children { margin-left: 22px; }
+.rail-children .rail-item { font-size: 13px; padding-block: 5px; }
+.rail-history { padding-top: 14px; border-top: 1px solid var(--border); }
 
 /* ---------- content column ---------- */
 .content { flex: 1; min-width: 0; max-width: 820px; padding: 28px 36px 120px; }
@@ -102,6 +113,12 @@ main { flex: 1; min-width: 0; }
 .topbar h1 { font-size: 20px; font-weight: 600; margin: 0 auto 0 0; }
 .filters { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .status { min-height: 22px; margin: 2px 0 8px; font-size: 13px; color: var(--text-2); }
+.app-menu, .view-menu {
+  display: none; align-items: center; gap: 6px;
+  border: 1px solid var(--border); background: var(--surface);
+  border-radius: 6px; padding: 5px 10px; font-size: 13px; color: var(--text-2);
+}
+.app-menu:hover, .view-menu:hover { background: var(--panel); color: var(--text); }
 .primary {
   background: var(--action); color: white;
   padding: 7px 14px; border-radius: 6px; font-size: 13px; font-weight: 500;
@@ -142,6 +159,8 @@ main { flex: 1; min-width: 0; }
 }
 .circle:hover { border-color: var(--action); }
 .done-row .circle { background: var(--mint); border-color: var(--mint-edge); color: var(--action); }
+.circle:disabled { cursor: default; background: var(--panel); border-color: var(--border); opacity: 0.7; }
+.circle:disabled:hover { border-color: var(--border); }
 .done-row .t-name { color: var(--text-2); }
 .t-name { font-size: 14.5px; text-align: left; }
 .t-name:hover { text-decoration: underline; text-underline-offset: 3px; }
@@ -174,6 +193,18 @@ main { flex: 1; min-width: 0; }
 .subtree .task-row { padding: 6px 8px 6px 14px; }
 .subtree .t-name { font-size: 13.5px; font-weight: 400; }
 .subtree .circle { width: 16px; height: 16px; }
+.tree-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; flex: 0 0 auto; color: var(--text-2); border-radius: 4px;
+}
+.tree-toggle:hover { background: var(--panel); color: var(--text); }
+.tree-toggle[aria-expanded="true"] svg { transform: rotate(90deg); }
+.remaining { color: var(--text-2); font-size: 12px; white-space: nowrap; }
+.parent-path {
+  color: var(--text-2); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.available-row .task-row { align-items: flex-start; }
+.available-copy { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
 
 /* completed-today line */
 .completed-line {
@@ -248,6 +279,7 @@ textarea.input { resize: vertical; min-height: 54px; }
 .disclosure-btn:hover { color: var(--text); }
 .disclosure-btn svg { transition: transform 150ms ease-out; }
 .disclosure-btn[aria-expanded="true"] svg { transform: rotate(90deg); }
+.more-summary { margin-left: 4px; color: var(--text-2); font-size: 12px; }
 .disclosure-body { margin-top: 4px; }
 .link-chip {
   display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
@@ -331,10 +363,11 @@ textarea.input { resize: vertical; min-height: 54px; }
 .sheet-head .input { font-size: 16px; font-weight: 600; flex: 1; }
 .close-x { color: var(--text-2); display: inline-flex; padding: 5px; border-radius: 5px; flex: 0 0 auto; }
 .close-x:hover { background: var(--panel); color: var(--text); }
+.sheet h2 { font-size: 12px; font-weight: 600; color: var(--text-2); margin: 24px 0 10px; }
 
 /* ---------- undo chip ---------- */
 .chip {
-  position: fixed; left: 232px; bottom: 20px; z-index: 20;
+  position: fixed; left: 232px; bottom: 20px; z-index: 55;
   display: flex; align-items: center; gap: 12px;
   background: oklch(0.29 0.02 155); color: white;
   border-radius: 8px; padding: 10px 14px; font-size: 13px;
@@ -360,6 +393,25 @@ textarea.input { resize: vertical; min-height: 54px; }
   padding: 10px 14px; font-size: 12.5px; max-width: 480px;
   font-family: ui-monospace, monospace;
 }
+@media (max-width: 1100px) {
+  .sidebar { display: none; }
+  .app-menu { display: inline-flex; }
+  .chip { left: 20px; }
+}
+@media (max-width: 760px) {
+  .rail { display: none; }
+  .view-menu { display: inline-flex; }
+  .content, .content.with-rail { max-width: none; padding: 20px 18px 110px; }
+  .t-meta { white-space: normal; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+  .task-row { align-items: flex-start; }
+}
+@media (max-width: 560px) {
+  .overlay { padding: 0; align-items: stretch; }
+  .sheet { width: 100%; min-height: 100%; border: 0; border-radius: 0; padding: 20px 18px 90px; }
+  .topbar h1 { width: 100%; order: -1; }
+  .filters { width: 100%; }
+  .t-meta .goal-tag { display: none; }
+}
 </style>
 </head>
 <body>
@@ -379,6 +431,8 @@ textarea.input { resize: vertical; min-height: 54px; }
       <nav class="rail" id="rail" hidden aria-label="Task views"></nav>
       <div class="content" id="content">
         <div class="topbar">
+          <button class="app-menu" id="app-menu">Navigation</button>
+          <button class="view-menu" id="view-menu">All tasks</button>
           <h1>Tasks</h1>
           <div class="filters" id="filters"></div>
           <button class="primary" id="new-task-btn" hidden>New task</button>
@@ -439,7 +493,7 @@ const TASKS = [
         { id: 's2a', name: 'Find last year’s reference number' },
       ]},
     ]},
-  { id: 't2', name: 'Book a dentist appointment', goals: ['care'], scheduled: TODAY, ideal: '2026-08-30',
+  { id: 't2', name: 'Book a dentist appointment', goals: ['care', 'office'], scheduled: TODAY, ideal: '2026-08-30',
     notes: 'Prefer the Thursday clinic near the office.',
     links: ['https://doctolib.fr'] },
   { id: 't3', name: 'Water the plants', goals: [], repeatable: true, lastDone: '2026-08-24', doneCount: 14 },
@@ -452,6 +506,8 @@ const TASKS = [
   { id: 't9', name: 'Finish the current book', goals: ['read'], ideal: '2026-08-31' },
   { id: 't10', name: 'Price flights', goals: ['japan'], deadline: '2026-08-25',
     subs: [{ id: 's10', name: 'Compare departure airports' }] },
+  { id: 't11', name: 'Send the insurance form', goals: ['care'], done: true, completedOn: '2026-08-27' },
+  { id: 't12', name: 'Compare old phone plans', goals: [], archived: true },
 ];
 
 /* ================= helpers ================= */
@@ -487,13 +543,44 @@ function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;'
 
 function findTask(id) { return TASKS.find(t => t.id === id); }
 function eachSub(list, fn) { (list || []).forEach(s => { fn(s); eachSub(s.subs, fn); }); }
+function findNode(id) {
+  for (const root of TASKS) {
+    if (root.id === id) return { node: root, root, path: [] };
+    let match = null;
+    const walk = (subs, path) => {
+      for (const sub of (subs || [])) {
+        if (sub.id === id) { match = { node: sub, root, path }; return; }
+        walk(sub.subs, [...path, sub.name]);
+        if (match) return;
+      }
+    };
+    walk(root.subs, [root.name]);
+    if (match) return match;
+  }
+  return null;
+}
 
 function hasOpenSubs(t) {
   let open = false;
   eachSub(t.subs, s => { if (!s.done) open = true; });
   return open;
 }
+function openSubCount(t) {
+  let count = 0;
+  eachSub(t.subs, s => { if (!s.done) count++; });
+  return count;
+}
 function isAvailable(t) { return !t.done && !hasOpenSubs(t); }
+function availableItems(roots) {
+  const items = [];
+  const walk = (node, root, path) => {
+    if (node.done || node.archived) return;
+    if (isAvailable(node) && taskMatchesIdeal(node, P.ideal)) items.push({ node, root, path });
+    (node.subs || []).forEach(sub => walk(sub, root, [...path, node.name]));
+  };
+  roots.filter(t => taskMatchesGoal(t, P.goal)).forEach(root => walk(root, root, []));
+  return items;
+}
 
 function goalById(id) {
   for (const g of GOALS) {
@@ -548,11 +635,12 @@ function goalProgress(g) {
 
 /* ================= url params ================= */
 
-const P = { variant: 'A', goal: 'all', available: false, ideal: 'any', task: null, capture: [] };
+const P = { variant: 'A', view: 'active', goal: 'all', available: false, ideal: 'any', task: null, capture: [] };
 (function readParams() {
   const q = new URLSearchParams(location.search);
   const v = (q.get('variant') || 'A').toUpperCase();
   if (['A', 'B', 'C'].includes(v)) P.variant = v;
+  if (['completed', 'archived'].includes(q.get('view'))) P.view = q.get('view');
   const g = q.get('goal');
   if (g === 'priority' || g === 'none' || goalById(g)) P.goal = g;
   if (q.get('available') === '1') P.available = true;
@@ -564,6 +652,7 @@ const P = { variant: 'A', goal: 'all', available: false, ideal: 'any', task: nul
 function pushParams() {
   const q = new URLSearchParams();
   q.set('variant', P.variant);
+  if (P.view !== 'active') q.set('view', P.view);
   if (P.goal !== 'all') q.set('goal', P.goal);
   if (P.available) q.set('available', '1');
   if (P.ideal !== 'any') q.set('ideal', P.ideal);
@@ -585,8 +674,12 @@ const sheetEl = document.getElementById('sheet');
 const chip = document.getElementById('chip');
 const chipText = document.getElementById('chip-text');
 const chipAction = document.getElementById('chip-action');
-let chipTimer, chipFn = null, overlayOpenedAt = 0;
+const appMenu = document.getElementById('app-menu');
+const viewMenu = document.getElementById('view-menu');
+let chipTimer, chipFn = null;
 let showDone = false, openAccordion = null, newSlot = null;
+const expandedGoals = new Set();
+const expandedTrees = new Set();
 
 function statusMsg(msg) {
   statusEl.textContent = msg;
@@ -648,7 +741,7 @@ function popDatePick(apply) {
 
 document.addEventListener('click', e => {
   if (!pop.hidden && !pop.contains(e.target) && !(popAnchor && popAnchor.contains(e.target))) closePop();
-  if (!overlay.hidden && !sheetEl.contains(e.target) && Date.now() - overlayOpenedAt > 200) closeSheet();
+  if (!overlay.hidden && !sheetEl.contains(e.target)) closeSheet();
 });
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
@@ -669,9 +762,10 @@ function whenChipHTML(t) {
 }
 function metaHTML(t, opts) {
   const bits = [];
-  if (opts && opts.showGoal && t.goals.length) {
-    const e = goalById(t.goals[0]);
-    if (e) bits.push(`<span class="goal-tag">${e.g.priority ? ICONS.flag : ''}${e.g.name}</span>`);
+  if (opts && opts.showGoal && (opts.goalSource || t).goals.length) {
+    const source = opts.goalSource || t;
+    const e = goalById(source.goals[0]);
+    if (e) bits.push(`<span class="goal-tag">${e.g.priority ? ICONS.flag : ''}${e.g.name}${source.goals.length > 1 ? ` +${source.goals.length - 1}` : ''}</span>`);
   }
   if (t.repeatable) {
     bits.push(`<span class="rep-mark" title="Repeatable, last done ${t.lastDone ? dateLabel(t.lastDone) : 'never'}">${ICONS.repeat}${t.lastDone ? 'Last ' + dateLabel(t.lastDone) : 'Repeat'}</span>`);
@@ -684,29 +778,52 @@ function metaHTML(t, opts) {
   if (hasOpenSubs(t)) bits.push('<span class="state-chip">Blocked</span>');
   return bits.join('');
 }
-function subTreeHTML(t) {
+function subTreeHTML(root) {
   const walk = subs => '<ul class="subtree">' + subs.map(s => {
+    const blocked = hasOpenSubs(s);
     const kids = s.subs && s.subs.length ? walk(s.subs) : '';
     return `<li class="${s.done ? 'done-row' : ''}">
       <div class="task-row">
-        <button class="circle" data-complete-sub="${t.id}" data-sub-id="${s.id}" aria-label="${s.done ? 'Reopen' : 'Complete'}">${s.done ? ICONS.check : ''}</button>
-        <span class="t-name">${esc(s.name)}</span>
+        <button class="circle" data-complete-sub="${root.id}" data-sub-id="${s.id}" aria-label="${s.done ? 'Reopen' : 'Complete'}" ${blocked && !s.done ? 'disabled' : ''}>${s.done ? ICONS.check : ''}</button>
+        <button class="t-name" data-open="${root.id}">${esc(s.name)}</button>
+        <span class="spacer"></span>
+        <span class="t-meta">${metaHTML(s, {})}${whenChipHTML(s)}</span>
       </div>${kids}
     </li>`;
   }).join('') + '</ul>';
-  return walk(t.subs);
+  return walk(root.subs);
 }
 function taskRowHTML(t, opts) {
   const sel = P.task === t.id ? ' selected' : '';
-  const subList = (opts && opts.tree && t.subs && t.subs.length && !t.done) ? subTreeHTML(t) : '';
+  const hasTree = !!(opts && opts.tree && t.subs && t.subs.length && !t.done);
+  const expanded = expandedTrees.has(t.id);
+  const blocked = hasOpenSubs(t);
+  const subList = hasTree && expanded ? subTreeHTML(t) : '';
   return `<li data-task="${t.id}" class="${t.done ? 'done-row' : ''}">
     <div class="task-row${sel}">
-      <button class="circle" data-complete="${t.id}" aria-label="${t.done ? 'Reopen' : 'Complete'}">${t.done ? ICONS.check : ''}</button>
+      ${hasTree ? `<button class="tree-toggle" data-tree-toggle="${t.id}" aria-expanded="${expanded}" aria-label="${expanded ? 'Collapse' : 'Expand'} ${esc(t.name)}">${ICONS.chev}</button>` : '<span class="tree-toggle"></span>'}
+      <button class="circle" data-complete="${t.id}" aria-label="${t.done ? 'Reopen' : 'Complete'}" ${(blocked && !t.done) || t.archived ? 'disabled' : ''}>${t.done ? ICONS.check : ''}</button>
       <button class="t-name" data-open="${t.id}">${esc(t.name)}</button>
+      ${hasTree && !expanded ? `<span class="remaining">${openSubCount(t)} remaining</span>` : ''}
       <span class="spacer"></span>
-      <span class="t-meta">${metaHTML(t, opts)}${whenChipHTML(t)}</span>
+      <span class="t-meta">${metaHTML(t, opts)}${opts && opts.showSchedule === false ? '' : whenChipHTML(t)}</span>
     </div>
     ${subList}
+  </li>`;
+}
+function availableRowHTML({ node, root, path }) {
+  const isRoot = node === root;
+  return `<li class="available-row">
+    <div class="task-row">
+      <span class="tree-toggle"></span>
+      <button class="circle" ${isRoot ? `data-complete="${root.id}"` : `data-complete-sub="${root.id}" data-sub-id="${node.id}"`} aria-label="Complete"></button>
+      <span class="available-copy">
+        <button class="t-name" data-open="${root.id}">${esc(node.name)}</button>
+        ${path.length ? `<span class="parent-path">${path.map(esc).join(' › ')}</span>` : ''}
+      </span>
+      <span class="spacer"></span>
+      <span class="t-meta">${metaHTML(node, { showGoal: P.goal === 'all' || P.goal === 'priority', goalSource: root })}${whenChipHTML(node)}</span>
+    </div>
   </li>`;
 }
 function completedLineHTML(n) {
@@ -715,8 +832,8 @@ function completedLineHTML(n) {
 }
 function doneListHTML() {
   if (!showDone) return '';
-  const done = TASKS.filter(t => t.done);
-  if (!done.length) return '<p class="empty-note">Nothing completed yet.</p>';
+  const done = TASKS.filter(t => t.done && t.completedOn === TODAY && !t.archived);
+  if (!done.length) return '<p class="empty-note">Nothing completed today.</p>';
   return '<ul class="tlist">' + done.map(t => taskRowHTML(t, {})).join('') + '</ul>';
 }
 
@@ -782,88 +899,121 @@ function openScheduleMenu(anchor, t) {
 
 /* ================= completion ================= */
 
-let completedToday = 0;
+let completedToday = TASKS.filter(t => t.done && t.completedOn === TODAY).length;
 
 function toggleComplete(id) {
   const t = findTask(id);
-  if (!t) return;
-  if (t.done) { t.done = false; completedToday = Math.max(0, completedToday - 1); renderAll(); return; }
+  if (!t || t.archived || (!t.done && hasOpenSubs(t))) return;
+  if (t.done) {
+    const previousDay = t.completedOn;
+    t.done = false;
+    t.completedOn = null;
+    if (previousDay === TODAY) completedToday = Math.max(0, completedToday - 1);
+    renderAll();
+    showChip('Task reopened.', () => {
+      t.done = true;
+      t.completedOn = previousDay;
+      if (previousDay === TODAY) completedToday++;
+      renderAll();
+    });
+    return;
+  }
   if (t.repeatable) {
     const prev = { scheduled: t.scheduled, ideal: t.ideal, deadline: t.deadline, lastDone: t.lastDone, doneCount: t.doneCount };
+    const subStates = [];
+    eachSub(t.subs, sub => { subStates.push([sub, !!sub.done]); sub.done = false; });
     t.lastDone = TODAY;
     t.doneCount = (t.doneCount || 0) + 1;
-    t.scheduled = null; t.ideal = null; t.deadline = null;
+    t.scheduled = null;
+    t.ideal = null;
+    t.deadline = null;
     renderAll();
-    showChip('Completed. A fresh copy is ready.', () => Object.assign(t, prev));
+    showChip('Completed. A fresh copy is ready.', () => {
+      Object.assign(t, prev);
+      subStates.forEach(([sub, done]) => { sub.done = done; });
+      renderAll();
+    });
   } else {
     t.done = true;
+    t.completedOn = TODAY;
     completedToday++;
     renderAll();
-    showChip('Task completed.', () => { t.done = false; completedToday--; });
+    showChip('Task completed.', () => {
+      t.done = false;
+      t.completedOn = null;
+      completedToday = Math.max(0, completedToday - 1);
+      renderAll();
+    });
   }
 }
 function toggleSubComplete(taskId, subId) {
   const t = findTask(taskId);
   if (!t) return;
-  eachSub(t.subs, s => { if (s.id === subId) s.done = !s.done; });
+  eachSub(t.subs, s => { if (s.id === subId && (s.done || !hasOpenSubs(s))) s.done = !s.done; });
   renderAll();
 }
 
 /* ================= task editor fields (shared) ================= */
 
 function editorFieldsHTML(t, opts) {
-  const isTop = !opts.isSub && !opts.isNew;
-  const moreOpen = opts.moreOpen || false;
+  const isTop = !opts.isSub;
+  const moreOpen = opts.moreOpen || !!t.moreOpen;
   const goalChips = (t.goals || []).map(gid => {
     const e = goalById(gid);
     return e ? `<span class="link-chip"><span>${e.g.name}</span><button data-del-goal="${gid}" aria-label="Remove goal link">${ICONS.x}</button></span>` : '';
   }).join('');
   const linkChips = (t.links || []).map((u, i) =>
     `<span class="link-chip"><span>${esc(u)}</span><button data-del-link="${i}" aria-label="Remove link">${ICONS.x}</button></span>`).join('');
-  return `
-  ${opts.isNew ? '' : `
-  <div class="frow">
-    <div class="field">
-      <label>Scheduled day</label>
-      <button class="menu-btn ${t.scheduled === TODAY ? 'today' : ''}" data-edit-when>${t.scheduled ? dayName(t.scheduled) : 'Not planned'}${ICONS.chev}</button>
-    </div>
-    <div class="field">
-      <label>Ideal completion date</label>
-      <input type="date" class="input" data-edit-ideal value="${t.ideal || ''}">
-    </div>
-    <div class="field">
-      <label>Deadline</label>
-      <input type="date" class="input" data-edit-deadline value="${t.deadline || ''}">
-    </div>
-  </div>`}
-  ${isTop ? `
-  <div class="check-row">
-    <input type="checkbox" id="rep-${t.id}" data-edit-rep ${t.repeatable ? 'checked' : ''}>
-    <label for="rep-${t.id}">Repeatable</label>
-    <span class="hint">A fresh copy is created after each completion.</span>
-  </div>
-  ${t.repeatable && t.lastDone ? `<p class="insp-rep-line">Last done ${dateLabel(t.lastDone)} · ${t.doneCount || 0} completions</p>` : ''}
-  <div class="field" style="margin-top:10px;">
-    <label>Goals</label>
-    <div class="chips">${goalChips}<button class="link-chip" data-add-goal style="color:var(--text-2);">${ICONS.plus} Add goal</button></div>
-  </div>` : ''}
-  <div>
-    <button class="disclosure-btn" data-more aria-expanded="${moreOpen}">${ICONS.chev} More options</button>
-    <div class="disclosure-body" ${moreOpen ? '' : 'hidden'}>
+  const completionFields = `
+    <div class="frow">
+      ${opts.isNew ? '' : `<div class="field">
+        <label>Scheduled day</label>
+        <button class="menu-btn ${t.scheduled === TODAY ? 'today' : ''}" data-edit-when>${t.scheduled ? dayName(t.scheduled) : 'Not planned'}${ICONS.chev}</button>
+      </div>`}
       <div class="field">
-        <label>Notes</label>
-        <textarea class="input" data-edit-notes placeholder="Working notes">${esc(t.notes || '')}</textarea>
+        <label>Ideal completion date</label>
+        <input type="date" class="input" data-edit-ideal value="${t.ideal || ''}">
       </div>
       <div class="field">
-        <label>Links</label>
-        <div class="chips">${linkChips}</div>
-        <div class="add-inline">
-          <input class="input" data-new-link placeholder="Add a URL, one at a time">
-          <button class="go" data-add-link>Add</button>
+        <label>Deadline</label>
+        <input type="date" class="input" data-edit-deadline value="${t.deadline || ''}">
+      </div>
+    </div>`;
+  const repeatableField = isTop ? `
+    <div class="check-row">
+      <input type="checkbox" id="rep-${t.id}" data-edit-rep ${t.repeatable ? 'checked' : ''}>
+      <label for="rep-${t.id}">Repeatable</label>
+      <span class="hint">A fresh copy is created after each completion.</span>
+    </div>
+    ${!opts.isNew && t.repeatable && t.lastDone ? `<p class="insp-rep-line">Last done ${dateLabel(t.lastDone)} · ${t.doneCount || 0} completions</p>` : ''}` : '';
+  const summary = [
+    t.notes ? 'Notes' : '',
+    (t.links || []).length ? `${t.links.length} ${t.links.length === 1 ? 'link' : 'links'}` : '',
+  ].filter(Boolean).join(' · ');
+  return `
+    ${opts.isNew ? '' : completionFields + repeatableField}
+    ${isTop ? `<div class="field" style="margin-top:10px;">
+      <label>Goals</label>
+      <div class="chips">${goalChips}<button class="link-chip" data-add-goal style="color:var(--text-2);">${ICONS.plus} Add goal</button></div>
+    </div>` : ''}
+    <div>
+      <button class="disclosure-btn" data-more aria-expanded="${moreOpen}">${ICONS.chev} More options${summary ? `<span class="more-summary">${summary}</span>` : ''}</button>
+      <div class="disclosure-body" ${moreOpen ? '' : 'hidden'}>
+        ${opts.isNew ? completionFields + repeatableField : ''}
+        <div class="field">
+          <label>Notes</label>
+          <textarea class="input" data-edit-notes placeholder="Working notes">${esc(t.notes || '')}</textarea>
+        </div>
+        <div class="field">
+          <label>Links</label>
+          <div class="chips">${linkChips}</div>
+          <div class="add-inline">
+            <input class="input" data-new-link placeholder="Add a URL, one at a time">
+            <button class="go" data-add-link>Add</button>
+          </div>
         </div>
       </div>
-    </div>
-  </div>`;
+    </div>`;
 }
 
 function editorCard(t, opts) {
@@ -873,7 +1023,7 @@ function editorCard(t, opts) {
     <div class="field"><label>Task</label><input class="input" data-edit-name value="${esc(t.name)}" placeholder="What is it?"></div>
     ${opts.isNew ? `
     <div class="check-row" style="margin-bottom:10px;">
-      <input type="checkbox" id="today-${t.id}" data-add-today>
+      <input type="checkbox" id="today-${t.id}" data-add-today ${t.addToday ? 'checked' : ''}>
       <label for="today-${t.id}">Add to Today</label>
     </div>` : ''}` : '') + editorFieldsHTML(t, opts);
   wireEditor(card, t, opts);
@@ -881,21 +1031,30 @@ function editorCard(t, opts) {
 }
 
 function wireEditor(root, t, opts) {
+  const nameInput = root.querySelector('[data-edit-name]');
+  if (nameInput) nameInput.addEventListener('input', () => { t.name = nameInput.value; });
+  const addToday = root.querySelector('[data-add-today]');
+  if (addToday) addToday.addEventListener('change', () => { t.addToday = addToday.checked; });
   const whenBtn = root.querySelector('[data-edit-when]');
   if (whenBtn) whenBtn.addEventListener('click', () => openScheduleMenu(whenBtn, t));
 
+  const replaceCompletionDate = (kind, value) => {
+    const previous = { ideal: t.ideal || null, deadline: t.deadline || null };
+    t[kind] = value || null;
+    const other = kind === 'ideal' ? 'deadline' : 'ideal';
+    if (t[kind] && t[other]) {
+      t[other] = null;
+      renderAll();
+      const removed = other === 'ideal' ? 'Ideal completion date' : 'Deadline';
+      showChip(`${removed} removed.`, () => { t.ideal = previous.ideal; t.deadline = previous.deadline; renderAll(); });
+      return;
+    }
+    renderAll();
+  };
   const idealInp = root.querySelector('[data-edit-ideal]');
-  if (idealInp) idealInp.addEventListener('change', e => {
-    t.ideal = e.target.value || null;
-    if (t.ideal && t.deadline) { t.deadline = null; statusMsg('Deadline removed. A task has an ideal date or a deadline, not both.'); }
-    renderAll();
-  });
+  if (idealInp) idealInp.addEventListener('change', e => replaceCompletionDate('ideal', e.target.value));
   const dlInp = root.querySelector('[data-edit-deadline]');
-  if (dlInp) dlInp.addEventListener('change', e => {
-    t.deadline = e.target.value || null;
-    if (t.deadline && t.ideal) { t.ideal = null; statusMsg('Ideal date removed. A task has an ideal date or a deadline, not both.'); }
-    renderAll();
-  });
+  if (dlInp) dlInp.addEventListener('change', e => replaceCompletionDate('deadline', e.target.value));
 
   const repBox = root.querySelector('[data-edit-rep]');
   if (repBox) repBox.addEventListener('change', e => { t.repeatable = e.target.checked; renderAll(); });
@@ -919,31 +1078,38 @@ function wireEditor(root, t, opts) {
   const moreBtn = root.querySelector('[data-more]');
   moreBtn.addEventListener('click', () => {
     const open = moreBtn.getAttribute('aria-expanded') === 'true';
+    t.moreOpen = !open;
     moreBtn.setAttribute('aria-expanded', String(!open));
     root.querySelector('.disclosure-body').hidden = open;
   });
 
   const notesEl = root.querySelector('[data-edit-notes]');
-  notesEl.addEventListener('change', () => { t.notes = notesEl.value; });
-
+  notesEl.addEventListener('input', () => { t.notes = notesEl.value; });
   const linkInput = root.querySelector('[data-new-link]');
   root.querySelector('[data-add-link]').addEventListener('click', () => {
     const u = linkInput.value.trim();
     if (!u) return;
     t.links = t.links || [];
     t.links.push(u);
+    t.moreOpen = true;
     renderAll();
   });
   root.querySelectorAll('[data-del-link]').forEach(b => b.addEventListener('click', () => {
     t.links.splice(+b.dataset.delLink, 1);
+    t.moreOpen = true;
     renderAll();
   }));
 }
 
 /* archive + delete footer */
-function footHTML() {
+function footHTML(t) {
+  const action = t.archived
+    ? '<button class="secondary" data-restore>Restore</button>'
+    : t.done
+      ? '<button class="secondary" data-reopen>Reopen</button>'
+      : '<button class="secondary" data-archive>Archive</button>';
   return `<div class="form-foot">
-    <button class="secondary" data-archive>Archive</button>
+    ${action}
     <button class="quiet-danger" data-delete>Delete…</button>
   </div>
   <div class="strip" data-delete-strip hidden>
@@ -955,12 +1121,31 @@ function footHTML() {
   </div>`;
 }
 function wireFoot(root, t, after) {
-  root.querySelector('[data-archive]').addEventListener('click', () => {
-    const i = TASKS.indexOf(t);
-    TASKS.splice(i, 1);
-    renderAll();
-    showChip('Task archived.', () => { TASKS.splice(i, 0, t); renderAll(); });
-    if (after) after();
+  const archive = root.querySelector('[data-archive]');
+  if (archive) archive.addEventListener('click', () => {
+    t.archived = true;
+    if (after) after(); else renderAll();
+    showChip('Task archived.', () => { t.archived = false; renderAll(); });
+  });
+  const restore = root.querySelector('[data-restore]');
+  if (restore) restore.addEventListener('click', () => {
+    t.archived = false;
+    if (after) after(); else renderAll();
+    showChip('Task restored.', () => { t.archived = true; renderAll(); });
+  });
+  const reopen = root.querySelector('[data-reopen]');
+  if (reopen) reopen.addEventListener('click', () => {
+    const completedOn = t.completedOn;
+    t.done = false;
+    t.completedOn = null;
+    if (completedOn === TODAY) completedToday = Math.max(0, completedToday - 1);
+    if (after) after(); else renderAll();
+    showChip('Task reopened.', () => {
+      t.done = true;
+      t.completedOn = completedOn;
+      if (completedOn === TODAY) completedToday++;
+      renderAll();
+    });
   });
   root.querySelector('[data-delete]').addEventListener('click', () => {
     root.querySelector('[data-delete-strip]').hidden = false;
@@ -971,9 +1156,8 @@ function wireFoot(root, t, after) {
   root.querySelector('[data-delete-yes]').addEventListener('click', () => {
     const i = TASKS.indexOf(t);
     TASKS.splice(i, 1);
-    renderAll();
+    if (after) after(); else renderAll();
     showChip('Task deleted.', null);
-    if (after) after();
   });
 }
 
@@ -1077,7 +1261,7 @@ function openInspector(id) {
   renderSubEditor(inspectorEl.querySelector('[data-subedit]'), t);
 
   const foot = inspectorEl.querySelector('[data-foot]');
-  foot.innerHTML = footHTML();
+  foot.innerHTML = footHTML(t);
   wireFoot(foot, t, () => clearTaskParam());
 
   inspectorEl.querySelector('.back').addEventListener('click', () => clearTaskParam());
@@ -1143,92 +1327,200 @@ function renderAccordion(t, li) {
   const card = editorCard(t, { moreOpen: false, withName: true });
   li.appendChild(card);
   const foot = document.createElement('div');
-  foot.innerHTML = footHTML();
+  foot.innerHTML = footHTML(t);
   card.appendChild(foot);
   wireFoot(foot, t, () => { openAccordion = null; clearTaskParam(); });
 }
 
 /* ================= variant C: rail + sheet ================= */
 
+function activeTasks() { return TASKS.filter(t => !t.done && !t.archived); }
+function currentViewName() {
+  if (P.view === 'completed') return 'Completed';
+  if (P.view === 'archived') return 'Archived';
+  if (P.goal === 'priority') return 'Priority goals';
+  if (P.goal === 'none') return 'No goal';
+  const match = goalById(P.goal);
+  return match ? match.g.name : 'All tasks';
+}
+function railViewButton(name, goal, filter) {
+  const items = activeTasks();
+  const current = P.view === 'active' && P.goal === goal;
+  return `<button class="rail-item" data-rail-goal="${goal}" aria-current="${current}">${name}<span class="count">${items.filter(filter).length}</span></button>`;
+}
+function railGoalHTML(g) {
+  const selectedParent = P.goal === g.id;
+  const selectedChild = (g.subs || []).some(sg => P.goal === sg.id);
+  if (selectedChild) expandedGoals.add(g.id);
+  const expanded = expandedGoals.has(g.id);
+  const children = (g.subs || []).map(sg =>
+    `<button class="rail-item" data-rail-goal="${sg.id}" aria-current="${P.view === 'active' && P.goal === sg.id}">${sg.name}<span class="count">${activeTasks().filter(t => taskMatchesGoal(t, sg.id)).length}</span></button>`
+  ).join('');
+  return `<div class="rail-goal-row">
+      ${(g.subs || []).length ? `<button class="rail-disclosure" data-goal-disclosure="${g.id}" aria-expanded="${expanded}" aria-label="${expanded ? 'Collapse' : 'Expand'} ${g.name}">${ICONS.chev}</button>` : '<span class="rail-disclosure"></span>'}
+      <button class="rail-item" data-rail-goal="${g.id}" aria-current="${P.view === 'active' && selectedParent}">${g.name}<span class="count">${activeTasks().filter(t => taskMatchesGoal(t, g.id)).length}</span></button>
+    </div>
+    ${(g.subs || []).length ? `<div class="rail-children" ${expanded ? '' : 'hidden'}>${children}</div>` : ''}`;
+}
+function openViewMenu(anchor) {
+  openPopover(anchor, pop => {
+    pop.appendChild(popTitle('Views'));
+    pop.appendChild(popItem('All tasks', () => selectRailGoal('all'), { current: P.view === 'active' && P.goal === 'all' }));
+    pop.appendChild(popItem('Priority goals', () => selectRailGoal('priority'), { current: P.view === 'active' && P.goal === 'priority' }));
+    pop.appendChild(popItem('No goal', () => selectRailGoal('none'), { current: P.view === 'active' && P.goal === 'none' }));
+    pop.appendChild(document.createElement('hr'));
+    goalRows().forEach(({ g, depth }) => pop.appendChild(popItem((depth ? '　' : '') + g.name, () => selectRailGoal(g.id), { current: P.view === 'active' && P.goal === g.id })));
+    pop.appendChild(document.createElement('hr'));
+    pop.appendChild(popItem('Completed', () => selectRailView('completed'), { current: P.view === 'completed' }));
+    pop.appendChild(popItem('Archived', () => selectRailView('archived'), { current: P.view === 'archived' }));
+  });
+}
+appMenu.addEventListener('click', () => {
+  openPopover(appMenu, pop => {
+    pop.appendChild(popTitle('Omni-orga'));
+    ['Dashboard', 'Goals', 'Tasks', 'Calendar', 'Stats'].forEach(name =>
+      pop.appendChild(popItem(name, () => statusMsg(`${name} is outside this prototype.`), { current: name === 'Tasks' })));
+  });
+});
+function selectRailGoal(goal) {
+  P.view = 'active';
+  P.goal = goal;
+  pushParams();
+  renderAll();
+}
+function selectRailView(view) {
+  P.view = view;
+  P.task = null;
+  pushParams();
+  renderAll();
+}
 function renderC() {
-  filtersEl.innerHTML = filterBarHTML({ goalMenu: false });
+  filtersEl.innerHTML = P.view === 'active' ? filterBarHTML({ goalMenu: false }) : '';
   const newBtn = document.getElementById('new-task-btn');
   newBtn.hidden = false;
-  newBtn.onclick = () => openSheet(null);
+  newBtn.onclick = e => { e.stopPropagation(); beginCreate(); };
+  viewMenu.hidden = false;
+  viewMenu.textContent = currentViewName();
+  viewMenu.onclick = () => openViewMenu(viewMenu);
 
   contentEl.classList.add('with-rail');
   railEl.hidden = false;
-  const views = [
-    { name: 'All tasks', goal: 'all', available: false, f: () => true },
-    { name: 'Available now', goal: 'all', available: true, f: t => isAvailable(t) },
-    { name: 'Priority goals', goal: 'priority', available: false, f: taskInPriority },
-    { name: 'No goal', goal: 'none', available: false, f: t => !t.goals.length },
-  ];
-  const viewBtn = v => {
-    const isCur = P.goal === v.goal && P.available === v.available;
-    return `<button class="rail-item" data-rail-goal="${v.goal}" data-rail-avail="${v.available}" aria-current="${isCur}">${v.name}<span class="count">${TASKS.filter(t => !t.done && v.f(t)).length}</span></button>`;
-  };
   railEl.innerHTML =
-    '<div class="rail-group"><div class="rail-label">Views</div>' + views.map(viewBtn).join('') + '</div>' +
-    '<div class="rail-group"><div class="rail-label">Goals</div>' +
-    GOALS.map(g => {
-      const isCur = P.goal === g.id && !P.available;
-      return `<button class="rail-item" data-rail-goal="${g.id}" data-rail-avail="false" aria-current="${isCur}">${g.name}<span class="count">${TASKS.filter(t => !t.done && taskMatchesGoal(t, g.id)).length}</span></button>`;
-    }).join('') + '</div>';
+    '<div class="rail-group"><div class="rail-label">Views</div>' +
+      railViewButton('All tasks', 'all', () => true) +
+      railViewButton('Priority goals', 'priority', taskInPriority) +
+      railViewButton('No goal', 'none', t => !t.goals.length) +
+    '</div>' +
+    '<div class="rail-group"><div class="rail-label">Goals</div>' + GOALS.map(railGoalHTML).join('') + '</div>' +
+    `<div class="rail-group rail-history"><div class="rail-label">History</div>
+      <button class="rail-item" data-rail-view="completed" aria-current="${P.view === 'completed'}">Completed<span class="count">${TASKS.filter(t => t.done && !t.archived).length}</span></button>
+      <button class="rail-item" data-rail-view="archived" aria-current="${P.view === 'archived'}">Archived<span class="count">${TASKS.filter(t => t.archived).length}</span></button>
+    </div>`;
 
-  const visible = applyFilters(TASKS.filter(t => !t.done));
-  listEl.innerHTML =
-    `<ul class="tlist">${visible.map(t => taskRowHTML(t, { tree: true, showGoal: P.goal === 'all' || P.goal === 'priority' })).join('')}</ul>` +
-    completedLineHTML(completedToday);
+  const syncSheet = () => {
+    if (P.task) openSheet(P.task);
+    else if (creating) openSheet(null);
+    else overlay.hidden = true;
+  };
+  if (P.view === 'active' && P.available) {
+    const items = availableItems(activeTasks());
+    listEl.innerHTML = items.length
+      ? `<ul class="tlist">${items.map(availableRowHTML).join('')}</ul>${completedLineHTML(completedToday)}`
+      : '<p class="empty-note">No available tasks match these filters.</p>';
+    syncSheet();
+    return;
+  }
+  const source = P.view === 'completed'
+    ? TASKS.filter(t => t.done && !t.archived)
+    : P.view === 'archived'
+      ? TASKS.filter(t => t.archived)
+      : applyFilters(activeTasks());
+  listEl.innerHTML = source.length
+    ? `<ul class="tlist">${source.map(t => taskRowHTML(t, { tree: P.view === 'active', showGoal: P.goal === 'all' || P.goal === 'priority', showSchedule: P.view === 'active' })).join('')}</ul>${P.view === 'active' ? completedLineHTML(completedToday) : ''}`
+    : `<p class="empty-note">${P.view === 'active' ? 'No tasks match these filters.' : `No ${P.view} tasks.`}</p>`;
+  syncSheet();
 }
 
+let creating = false;
+let createDraft = null;
+function blankDraft() {
+  const presetGoal = P.goal !== 'all' && P.goal !== 'priority' && P.goal !== 'none' ? P.goal : null;
+  return { id: 'draft', name: '', goals: presetGoal ? [presetGoal] : [], scheduled: null, ideal: null, deadline: null, repeatable: false, notes: '', links: [], subs: [], addToday: false, moreOpen: false };
+}
+function beginCreate() {
+  if (!createDraft) createDraft = blankDraft();
+  creating = true;
+  openSheet(null);
+}
 function openSheet(id) {
   const t = id ? findTask(id) : null;
-  overlayOpenedAt = Date.now();
   overlay.hidden = false;
   if (!t) {
-    const draft = { id: 'draft', name: '', goals: [], scheduled: null, ideal: null, deadline: null, repeatable: false, notes: '', links: [], subs: [] };
+    if (!createDraft) createDraft = blankDraft();
+    const draft = createDraft;
     sheetEl.innerHTML = `
-      <div class="sheet-head"><input class="input" data-sheet-name placeholder="What is it?" aria-label="Task name">
+      <div class="sheet-head"><input class="input" data-sheet-name value="${esc(draft.name)}" placeholder="What is it?" aria-label="Task name">
         <button class="close-x" data-sheet-close aria-label="Close">${ICONS.x}</button></div>
+      <div class="check-row" style="margin-bottom:12px;">
+        <input type="checkbox" id="today-draft" data-add-today ${draft.addToday ? 'checked' : ''}>
+        <label for="today-draft">Add to Today</label>
+      </div>
       <div data-editor></div>
       <div class="form-foot"><button class="primary" data-sheet-save>Create task</button><button class="secondary" data-sheet-cancel>Cancel</button></div>`;
-    sheetEl.querySelector('[data-editor]').appendChild(editorCard(draft, { isNew: true, withName: true, moreOpen: false }));
-    sheetEl.querySelector('[data-sheet-cancel]').addEventListener('click', closeSheet);
+    const nameInput = sheetEl.querySelector('[data-sheet-name]');
+    nameInput.addEventListener('input', () => { draft.name = nameInput.value; });
+    const addToday = sheetEl.querySelector('[data-add-today]');
+    addToday.addEventListener('change', () => { draft.addToday = addToday.checked; });
+    sheetEl.querySelector('[data-editor]').appendChild(editorCard(draft, { isNew: true, withName: false, moreOpen: draft.moreOpen }));
+    sheetEl.querySelector('[data-sheet-cancel]').addEventListener('click', () => {
+      createDraft = null;
+      creating = false;
+      closeSheet();
+    });
     sheetEl.querySelector('[data-sheet-close]').addEventListener('click', closeSheet);
     sheetEl.querySelector('[data-sheet-save]').addEventListener('click', () => {
-      const name = sheetEl.querySelector('[data-sheet-name]').value.trim();
-      if (!name) { sheetEl.querySelector('[data-sheet-name]').focus(); return; }
+      const name = draft.name.trim();
+      if (!name) { nameInput.focus(); return; }
       TASKS.push({
         id: 't' + Date.now(), name,
         goals: [...draft.goals],
         ideal: draft.ideal, deadline: draft.deadline, repeatable: draft.repeatable,
         notes: draft.notes, links: [...draft.links], subs: [],
-        scheduled: sheetEl.querySelector('[data-add-today]').checked ? TODAY : null,
+        scheduled: draft.addToday ? TODAY : null,
       });
+      createDraft = null;
+      creating = false;
       closeSheet();
-      renderAll();
       showChip('Task created.');
     });
-    setTimeout(() => sheetEl.querySelector('[data-sheet-name]').focus(), 0);
+    setTimeout(() => nameInput.focus(), 0);
     return;
   }
   sheetEl.innerHTML = `
     <div class="sheet-head"><input class="input" data-sheet-name value="${esc(t.name)}" aria-label="Task name">
       <button class="close-x" data-sheet-close aria-label="Close">${ICONS.x}</button></div>
     <div data-editor></div>
+    <h2>Subtasks</h2>
+    <div data-subedit></div>
     <div data-foot></div>`;
   const nameInput = sheetEl.querySelector('[data-sheet-name]');
-  nameInput.addEventListener('change', () => { t.name = nameInput.value; renderAll(); });
-  sheetEl.querySelector('[data-editor]').appendChild(editorCard(t, { moreOpen: true }));
+  nameInput.addEventListener('input', () => { t.name = nameInput.value; });
+  sheetEl.querySelector('[data-editor]').appendChild(editorCard(t, { moreOpen: !!t.moreOpen }));
+  renderSubEditor(sheetEl.querySelector('[data-subedit]'), t);
   const foot = sheetEl.querySelector('[data-foot]');
-  foot.innerHTML = footHTML();
+  foot.innerHTML = footHTML(t);
   wireFoot(foot, t, () => { clearTaskParam(); });
-  sheetEl.querySelector('[data-sheet-close]').addEventListener('click', () => { clearTaskParam(); });
+  sheetEl.querySelector('[data-sheet-close]').addEventListener('click', clearTaskParam);
 }
 function closeSheet() {
   overlay.hidden = true;
-  if (P.task) { P.task = null; pushParams(); }
+  creating = false;
+  if (P.task) {
+    const closing = findTask(P.task);
+    if (closing) closing.moreOpen = false;
+    P.task = null;
+    pushParams();
+  }
   renderAll();
 }
 
@@ -1242,8 +1534,8 @@ document.addEventListener('click', e => {
 
   const whenBtn = e.target.closest('[data-when]');
   if (whenBtn) {
-    const t = findTask(whenBtn.dataset.when);
-    if (t) openScheduleMenu(whenBtn, t);
+    const match = findNode(whenBtn.dataset.when);
+    if (match) openScheduleMenu(whenBtn, match.node);
     return;
   }
 
@@ -1252,15 +1544,25 @@ document.addEventListener('click', e => {
   if (e.target.closest('[data-f-all]')) { if (P.available) setFilter('available', false); return; }
   if (e.target.closest('[data-f-avail]')) { if (!P.available) setFilter('available', true); return; }
   if (e.target.closest('[data-toggle-done]')) { showDone = !showDone; renderAll(); return; }
-
-  const railBtn = e.target.closest('[data-rail-goal]');
-  if (railBtn) {
-    P.goal = railBtn.dataset.railGoal;
-    P.available = railBtn.dataset.railAvail === 'true';
-    pushParams();
+  const treeToggle = e.target.closest('[data-tree-toggle]');
+  if (treeToggle) {
+    const id = treeToggle.dataset.treeToggle;
+    if (expandedTrees.has(id)) expandedTrees.delete(id); else expandedTrees.add(id);
     renderAll();
     return;
   }
+
+  const goalDisclosure = e.target.closest('[data-goal-disclosure]');
+  if (goalDisclosure) {
+    const id = goalDisclosure.dataset.goalDisclosure;
+    if (expandedGoals.has(id)) expandedGoals.delete(id); else expandedGoals.add(id);
+    renderAll();
+    return;
+  }
+  const railView = e.target.closest('[data-rail-view]');
+  if (railView) { selectRailView(railView.dataset.railView); return; }
+  const railBtn = e.target.closest('[data-rail-goal]');
+  if (railBtn) { selectRailGoal(railBtn.dataset.railGoal); return; }
 
   if (e.target.closest('[data-goto-goal]')) {
     setFilter('goal', e.target.closest('[data-goto-goal]').dataset.gotoGoal);
@@ -1289,8 +1591,15 @@ document.addEventListener('click', e => {
   }
 });
 
-function setTaskParam(id) { P.task = id; pushParams(); renderAll(); }
-function clearTaskParam() { P.task = null; openAccordion = null; pushParams(); renderAll(); }
+function setTaskParam(id) { creating = false; P.task = id; pushParams(); renderAll(); }
+function clearTaskParam() {
+  const selected = P.task ? findTask(P.task) : null;
+  if (selected) selected.moreOpen = false;
+  P.task = null;
+  openAccordion = null;
+  pushParams();
+  renderAll();
+}
 
 /* inline new-task form (variants A and B) */
 function buildInlineForm(presetGoal) {
@@ -1393,6 +1702,7 @@ function renderAll() {
   contentEl.classList.remove('with-rail', 'with-inspector');
   const newBtn = document.getElementById('new-task-btn');
   newBtn.hidden = true;
+  viewMenu.hidden = true;
   if (P.variant === 'A') renderA();
   else if (P.variant === 'B') renderB();
   else renderC();
