@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Goals · Omni-orga prototype</title>
+<!-- Throwaway prototype for wayfinder ticket #10 (Shape Goals hierarchy and editing).
+     Static data, no build step. Open directly in a browser. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --surface: oklch(0.99 0.003 155);
+  --panel: oklch(0.962 0.007 155);
+  --border: oklch(0.908 0.012 155);
+  --border-strong: oklch(0.84 0.018 155);
+  --text: oklch(0.29 0.02 155);
+  --text-2: oklch(0.50 0.02 155);
+  --mint: #b8e2c8;
+  --mint-soft: oklch(0.955 0.03 155);
+  --mint-edge: oklch(0.72 0.06 155);
+  --action: oklch(0.46 0.095 155);
+  --action-hover: oklch(0.41 0.095 155);
+  --track: oklch(0.93 0.01 155);
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.45;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+a { color: var(--action); }
+:focus-visible { outline: 2px solid var(--action); outline-offset: 2px; border-radius: 4px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; }
+}
+
+/* ---------- shell ---------- */
+.app { display: flex; min-height: 100vh; }
+.sidebar {
+  width: 208px; flex: 0 0 auto;
+  background: var(--panel); border-right: 1px solid var(--border);
+  padding: 20px 12px;
+}
+.app-name { font-size: 13px; font-weight: 600; color: var(--text-2); padding: 0 12px 14px; }
+.sidebar nav { display: flex; flex-direction: column; gap: 2px; }
+.sidebar nav a {
+  display: block; padding: 7px 12px; border-radius: 6px;
+  color: var(--text-2); text-decoration: none; font-weight: 500;
+}
+.sidebar nav a:hover { background: var(--surface); color: var(--text); }
+.sidebar nav a[aria-current="page"] { background: var(--mint-soft); color: var(--text); }
+main { flex: 1; padding: 28px 44px 90px; max-width: 840px; }
+
+/* ---------- topbar ---------- */
+.topbar { display: flex; align-items: center; gap: 16px; margin-bottom: 4px; }
+.topbar h1 { font-size: 20px; font-weight: 600; margin: 0 auto 0 0; }
+.segmented {
+  display: inline-flex; background: var(--panel);
+  border: 1px solid var(--border); border-radius: 7px; padding: 2px;
+}
+.segmented button {
+  padding: 4px 12px; border-radius: 5px; font-size: 13px; color: var(--text-2);
+}
+.segmented button[aria-pressed="true"] {
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); box-shadow: 0 1px 2px oklch(0.3 0.02 155 / 0.08);
+  margin: -1px;
+}
+.primary {
+  background: var(--action); color: white;
+  padding: 7px 14px; border-radius: 6px; font-size: 13px; font-weight: 500;
+}
+.primary:hover { background: var(--action-hover); }
+.status { min-height: 22px; margin: 2px 0 6px; font-size: 13px; color: var(--text-2); }
+
+/* ---------- tree ---------- */
+.tree { list-style: none; margin: 0; padding: 0; }
+.goal > .row { border-bottom: 1px solid var(--border); }
+.sub { border-bottom: 0; }
+.row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 11px 8px; border-radius: 6px;
+}
+.goal > .row:hover { background: var(--panel); }
+.row .chevron { color: var(--text-2); display: inline-flex; padding: 2px; }
+.row .chevron svg { transition: transform 150ms ease-out; }
+.goal.open > .row .chevron svg { transform: rotate(90deg); }
+.name { font-size: 15px; font-weight: 500; text-align: left; }
+.sub .name { font-size: 14px; font-weight: 400; }
+.flag-mark { display: inline-flex; color: var(--action); }
+.name:hover { text-decoration: underline; text-underline-offset: 3px; }
+.spacer { flex: 1; }
+.meta { display: flex; align-items: center; gap: 10px; color: var(--text-2); font-size: 13px; white-space: nowrap; }
+.bar { width: 110px; height: 4px; border-radius: 2px; background: var(--track); overflow: hidden; }
+.bar .fill { display: block; height: 100%; background: var(--mint); box-shadow: inset 0 0 0 1px var(--mint-edge); border-radius: 2px; }
+.actions { display: inline-flex; gap: 2px; opacity: 0; transition: opacity 120ms ease-out; }
+.row:hover .actions, .row:focus-within .actions { opacity: 1; }
+.icon {
+  display: inline-flex; padding: 5px; border-radius: 5px; color: var(--text-2);
+}
+.icon:hover { background: var(--surface); color: var(--text); }
+.icon[aria-pressed="true"] { color: var(--action); }
+.icon:disabled { opacity: 0.35; cursor: not-allowed; }
+.icon.restore { display: none; }
+
+.subgoals { list-style: none; margin: 0 0 4px 21px; padding: 0 0 0 0; border-left: 1px solid var(--border); }
+.subgoals .row { padding-left: 20px; }
+.tasks-link { padding: 7px 8px 7px 28px; }
+.tasks-link a { font-size: 13px; text-decoration: none; }
+.tasks-link a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+.empty-note { color: var(--text-2); font-size: 13px; padding: 24px 8px; }
+
+/* ---------- popover ---------- */
+.popover {
+  position: fixed; z-index: 10; min-width: 220px; max-width: 280px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  box-shadow: 0 8px 24px oklch(0.3 0.02 155 / 0.14); padding: 6px;
+}
+.popover-title { font-size: 12px; color: var(--text-2); padding: 4px 10px 6px; }
+.popover button {
+  display: block; width: 100%; text-align: left;
+  padding: 7px 10px; border-radius: 5px; font-size: 13.5px;
+}
+.popover button:hover { background: var(--panel); }
+
+/* ---------- detail page ---------- */
+.back {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 13px; text-decoration: none; margin-bottom: 18px;
+}
+.back:hover { text-decoration: underline; text-underline-offset: 3px; }
+.detail-head h1 { font-size: 20px; font-weight: 600; margin: 0 0 8px; }
+.detail-facts { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.type-chip {
+  font-size: 12px; color: var(--text-2);
+  border: 1px solid var(--border); border-radius: 5px; padding: 2px 8px;
+}
+.flag-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 13px; color: var(--text-2);
+  border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px;
+}
+.flag-btn[aria-pressed="true"] { color: var(--action); border-color: var(--action); }
+.progress-line { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; color: var(--text-2); font-size: 13px; }
+.progress-line .bar { width: 160px; }
+h2 { font-size: 13px; font-weight: 600; color: var(--text-2); margin: 0 0 8px; }
+.section { margin-bottom: 28px; }
+.task-list { list-style: none; margin: 0; padding: 0; }
+.task-list li {
+  display: flex; align-items: baseline; gap: 12px;
+  padding: 8px 4px; border-bottom: 1px solid var(--border);
+}
+.task-list .t-name { flex: 1; }
+.task-list .t-status { font-size: 12.5px; color: var(--text-2); }
+.task-list li.done .t-name { color: var(--text-2); }
+.task-list li.empty { color: var(--text-2); border-bottom: 0; }
+.quiet-link { font-size: 13px; text-decoration: none; }
+.quiet-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+.detail-actions { display: flex; align-items: center; gap: 10px; margin-top: 32px; }
+.secondary {
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 6px 13px; font-size: 13px; color: var(--text);
+}
+.secondary:hover { background: var(--panel); }
+.quiet-danger { font-size: 13px; color: var(--text-2); padding: 6px 8px; }
+.quiet-danger:hover { color: oklch(0.45 0.12 25); }
+.strip {
+  margin-top: 14px; background: var(--panel);
+  border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px;
+}
+.strip p { margin: 0 0 10px; }
+.strip .strip-buttons { display: flex; gap: 8px; }
+.done-line { display: flex; align-items: center; gap: 10px; margin-top: 32px; font-size: 14px; }
+
+/* ---------- undo chip ---------- */
+.chip {
+  position: fixed; left: 232px; bottom: 20px; z-index: 20;
+  display: flex; align-items: center; gap: 12px;
+  background: oklch(0.29 0.02 155); color: white;
+  border-radius: 8px; padding: 10px 14px; font-size: 13px;
+  box-shadow: 0 8px 24px oklch(0.3 0.02 155 / 0.25);
+}
+.chip-btn { color: var(--mint); font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="app-name">Omni-orga</div>
+    <nav>
+      <a href="#">Dashboard</a>
+      <a href="#" aria-current="page">Goals</a>
+      <a href="#">Tasks</a>
+      <a href="#">Calendar</a>
+      <a href="#">Stats</a>
+    </nav>
+  </aside>
+
+  <main>
+    <div id="list-view">
+      <div class="topbar">
+        <h1>Goals</h1>
+        <div class="segmented" role="group" aria-label="Show active or archived goals">
+          <button id="seg-active" aria-pressed="true">Active</button>
+          <button id="seg-archived" aria-pressed="false">Archived</button>
+        </div>
+        <button id="add-goal" class="primary">Add goal</button>
+      </div>
+      <p class="status" id="status" role="status"></p>
+
+      <ul class="tree" id="tree"></ul>
+      <div id="archived-wrap" hidden>
+        <ul class="tree" id="archived-list"></ul>
+        <p class="empty-note" id="archived-empty" hidden>No archived goals.</p>
+      </div>
+    </div>
+
+    <section id="detail" hidden>
+      <a href="#" class="back" id="back">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4L6 8l4 4"/></svg>
+        Goals
+      </a>
+      <div class="detail-head">
+        <h1 id="d-name"></h1>
+        <div class="detail-facts">
+          <span class="type-chip" id="d-type"></span>
+          <button class="flag-btn" id="d-priority" aria-pressed="false">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 14.5V2.5"/><path d="M4.5 3h7.5l-2.2 2.75L12 8.5H4.5"/></svg>
+            Priority
+          </button>
+        </div>
+      </div>
+      <div class="progress-line" id="d-progress"></div>
+      <div class="section" id="d-subs-wrap">
+        <h2>Subgoals</h2>
+        <ul class="task-list" id="d-subs"></ul>
+      </div>
+      <div class="section">
+        <h2>Linked tasks</h2>
+        <ul class="task-list" id="d-tasks"></ul>
+        <a href="#" class="quiet-link">Open in Tasks</a>
+      </div>
+      <div class="detail-actions" id="d-actions">
+        <button class="primary" id="d-complete">Complete goal</button>
+        <button class="secondary" id="d-archive">Archive</button>
+        <button class="quiet-danger" id="d-delete">Delete…</button>
+      </div>
+      <div class="strip" id="d-complete-strip" hidden>
+        <p id="d-complete-msg"></p>
+        <div class="strip-buttons">
+          <button class="primary" id="d-complete-yes">Complete</button>
+          <button class="secondary" id="d-complete-no">Cancel</button>
+        </div>
+      </div>
+      <div class="strip" id="d-delete-strip" hidden>
+        <p id="d-delete-msg"></p>
+        <div class="strip-buttons">
+          <button class="primary" id="d-delete-yes">Delete</button>
+          <button class="secondary" id="d-delete-no">Cancel</button>
+        </div>
+      </div>
+      <p class="done-line" id="d-done-line" hidden>
+        Goal completed. Unfinished tasks stay active without it.
+        <button class="quiet-link" id="d-undo-complete">Undo</button>
+      </p>
+    </section>
+  </main>
+</div>
+
+<div class="chip" id="chip" hidden>
+  <span id="chip-text"></span>
+  <button class="chip-btn" id="chip-action">Restore</button>
+</div>
+
+<script>
+const ICON = {
+  chevron: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>',
+  flag: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 14.5V2.5"/><path d="M4.5 3h7.5l-2.2 2.75L12 8.5H4.5"/></svg>',
+  move: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 13.5V8a3 3 0 0 1 3-3h6"/><path d="M10 2.5L12.5 5 10 7.5"/></svg>',
+  archive: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3" width="11" height="3" rx="0.5"/><path d="M4 6v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V6"/><path d="M6.5 8.5h3"/></svg>',
+  restore: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a5 5 0 1 0 1.5-3.6"/><path d="M3 3.5V6h2.5"/></svg>'
+};
+
+const GOALS = [
+  { id: 'care', name: 'Take care of myself', type: 'ongoing', done: 12, priority: true,
+    subs: [
+      { id: 'finances', name: 'Financial stability', type: 'oneshot', done: 5, total: 18, priority: true },
+      { id: 'eatwell', name: 'Eat well', type: 'ongoing', done: 7 }
+    ] },
+  { id: 'office', name: 'Renovate the home office', type: 'oneshot', done: 9, total: 14, priority: true, subs: [] },
+  { id: 'wood', name: 'Learn woodworking', type: 'ongoing', done: 3, subs: [] },
+  { id: 'japan', name: 'Plan the trip to Japan', type: 'oneshot', done: 2, total: 11, subs: [] },
+  { id: 'read', name: 'Read more', type: 'ongoing', done: 21, subs: [] }
+];
+
+const ARCHIVED = [
+  { id: 'workshop', name: 'Set up the workshop', type: 'oneshot', done: 6, total: 6, subs: [] }
+];
+
+const TASKS = {
+  care: [['Book a dentist appointment', 'Available'], ['Compare index funds', 'Blocked'], ['Meal plan for the week', 'Done']],
+  finances: [['Open the savings account', 'Available'], ['List monthly subscriptions', 'Available'], ['Set up the automatic transfer', 'Done']],
+  eatwell: [['Plan three dinners', 'Available'], ['Buy groceries', 'Done']],
+  office: [['Order the desk', 'Available'], ['Paint the walls', 'Blocked'], ['Choose the lighting', 'Available'], ['Assemble the shelf', 'Done']],
+  wood: [['Buy chisels', 'Available'], ['Watch joinery basics', 'Done']],
+  japan: [['Check passport dates', 'Available'], ['Shortlist cities', 'Available'], ['Price flights', 'Blocked']],
+  read: [['Finish the current book', 'Available']],
+  workshop: []
+};
+
+const tree = document.getElementById('tree');
+const archivedList = document.getElementById('archived-list');
+const statusEl = document.getElementById('status');
+const chip = document.getElementById('chip');
+const chipText = document.getElementById('chip-text');
+const chipAction = document.getElementById('chip-action');
+let chipTimer, lastArchived = null, currentLi = null;
+
+/* ---------- row building ---------- */
+
+function metaHTML(g) {
+  if (g.type === 'oneshot') {
+    if (!g.total) return '<span class="count">No tasks yet</span>';
+    const pct = Math.round(g.done / g.total * 100);
+    return `<span class="bar"><span class="fill" style="width:${pct}%"></span></span><span class="count">${g.done} of ${g.total}</span>`;
+  }
+  return `<span class="count">${g.done} done</span>`;
+}
+
+function actionsHTML() {
+  return `<div class="actions">
+    <button class="icon priority-toggle" aria-label="Priority" aria-pressed="false" title="Priority">${ICON.flag}</button>
+    <button class="icon move-btn" aria-label="Move to another place in the hierarchy">${ICON.move}</button>
+    <button class="icon archive-btn" aria-label="Archive">${ICON.archive}</button>
+    <button class="icon restore" aria-label="Restore">${ICON.restore}</button>
+  </div>`;
+}
+
+function flagMark(g) {
+  return `<span class="flag-mark" aria-label="Priority goal" ${g.priority ? '' : 'hidden'}>${ICON.flag}</span>`;
+}
+
+function subLi(g) {
+  const li = document.createElement('li');
+  li.className = 'goal sub';
+  li.dataset.id = g.id;
+  li.dataset.name = g.name;
+  li.dataset.type = g.type;
+  li.dataset.done = g.done;
+  li.dataset.total = g.total || 0;
+  li.innerHTML = `<div class="row">
+      <button class="name">${g.name}</button>
+      ${flagMark(g)}
+      <span class="spacer"></span>
+      <span class="meta">${metaHTML(g)}</span>
+      ${actionsHTML()}
+    </div>`;
+  if (g.priority) li.querySelector('.priority-toggle').setAttribute('aria-pressed', 'true');
+  return li;
+}
+
+function goalLi(g) {
+  const li = document.createElement('li');
+  li.className = 'goal open';
+  li.dataset.id = g.id;
+  li.dataset.name = g.name;
+  li.dataset.type = g.type;
+  li.dataset.done = g.done;
+  li.dataset.total = g.total || 0;
+  const subs = document.createElement('ul');
+  subs.className = 'subgoals';
+  (g.subs || []).forEach(s => subs.appendChild(subLi(s)));
+  const link = document.createElement('li');
+  link.className = 'tasks-link';
+  link.innerHTML = `<a href="#">View tasks</a>`;
+  subs.appendChild(link);
+  li.innerHTML = `<div class="row">
+      <button class="chevron" aria-expanded="true" aria-label="Show or hide subgoals">${ICON.chevron}</button>
+      <button class="name">${g.name}</button>
+      ${flagMark(g)}
+      <span class="spacer"></span>
+      <span class="meta">${metaHTML(g)}</span>
+      ${actionsHTML()}
+    </div>`;
+  if (g.priority) li.querySelector('.priority-toggle').setAttribute('aria-pressed', 'true');
+  li.appendChild(subs);
+  return li;
+}
+
+GOALS.forEach(g => tree.appendChild(goalLi(g)));
+ARCHIVED.forEach(g => archivedList.appendChild(goalLi(g)));
+
+/* ---------- priority cap ---------- */
+
+function activePriorityCount() {
+  return tree.querySelectorAll('.priority-toggle[aria-pressed="true"]').length;
+}
+
+function refreshPriorityLocks() {
+  const full = activePriorityCount() >= 3;
+  document.querySelectorAll('#tree .priority-toggle').forEach(btn => {
+    const pressed = btn.getAttribute('aria-pressed') === 'true';
+    const locked = full && !pressed;
+    btn.disabled = locked;
+    btn.title = locked ? 'All 3 priority slots are in use' : 'Priority';
+  });
+}
+
+function statusMsg(msg) {
+  statusEl.textContent = msg;
+  clearTimeout(statusMsg.t);
+  statusMsg.t = setTimeout(() => { statusEl.textContent = ''; }, 4000);
+}
+
+/* ---------- move popover ---------- */
+
+const pop = document.createElement('div');
+pop.className = 'popover';
+pop.hidden = true;
+document.body.appendChild(pop);
+
+function closePop() { pop.hidden = true; }
+
+function showMove(anchor, li) {
+  pop.innerHTML = '';
+  const title = document.createElement('div');
+  title.className = 'popover-title';
+  title.textContent = 'Move to';
+  pop.appendChild(title);
+  const isSub = li.classList.contains('sub');
+  const parentGoal = isSub ? li.closest('li.goal:not(.sub)') : null;
+  const addOption = (label, target) => {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.addEventListener('click', () => {
+      if (target === 'top') { tree.appendChild(li); }
+      else { target.querySelector(':scope > .subgoals').appendChild(li); }
+      refreshPriorityLocks();
+      closePop();
+    });
+    pop.appendChild(b);
+  };
+  if (!isSub) {
+    const here = document.createElement('button');
+    here.textContent = 'Top level (current)';
+    here.disabled = true;
+    pop.appendChild(here);
+  } else {
+    addOption('Top level', 'top');
+  }
+  tree.querySelectorAll(':scope > li.goal').forEach(other => {
+    if (other === li || other === parentGoal) return;
+    addOption(other.dataset.name, other);
+  });
+  pop.hidden = false;
+  const r = anchor.getBoundingClientRect();
+  pop.style.top = Math.min(r.bottom + 6, innerHeight - pop.offsetHeight - 12) + 'px';
+  pop.style.left = Math.max(12, Math.min(r.left, innerWidth - pop.offsetWidth - 12)) + 'px';
+}
+
+/* ---------- undo chip ---------- */
+
+function showChip(text, restoreTarget) {
+  chipText.textContent = text;
+  lastArchived = restoreTarget || null;
+  chipAction.hidden = !restoreTarget;
+  chip.hidden = false;
+  clearTimeout(chipTimer);
+  chipTimer = setTimeout(() => { chip.hidden = true; }, 5000);
+}
+
+chipAction.addEventListener('click', () => {
+  if (lastArchived) {
+    tree.appendChild(lastArchived);
+    refreshPriorityLocks();
+  }
+  chip.hidden = true;
+});
+
+/* ---------- list events ---------- */
+
+tree.addEventListener('click', e => {
+  const li = e.target.closest('li.goal');
+  if (!li) return;
+  if (e.target.closest('.chevron')) {
+    li.classList.toggle('open');
+    li.querySelector('.chevron').setAttribute('aria-expanded', li.classList.contains('open'));
+    return;
+  }
+  if (e.target.closest('.name')) { openDetail(li); return; }
+  if (e.target.closest('.priority-toggle')) {
+    const btn = e.target.closest('.priority-toggle');
+    const pressed = btn.getAttribute('aria-pressed') === 'true';
+    if (!pressed && activePriorityCount() >= 3) {
+      statusMsg('All 3 priority slots are in use');
+      return;
+    }
+    btn.setAttribute('aria-pressed', String(!pressed));
+    li.querySelector('.flag-mark').hidden = pressed;
+    refreshPriorityLocks();
+    return;
+  }
+  if (e.target.closest('.move-btn')) { showMove(e.target.closest('.move-btn'), li); return; }
+  if (e.target.closest('.archive-btn')) {
+    archivedList.appendChild(li);
+    refreshPriorityLocks();
+    refreshArchivedEmpty();
+    showChip('Goal archived.', li);
+    return;
+  }
+});
+tree.addEventListener('click', e => {
+  if (e.target.closest('.tasks-link a')) e.preventDefault();
+});
+
+archivedList.addEventListener('click', e => {
+  const li = e.target.closest('li.goal');
+  if (!li) return;
+  if (e.target.closest('.restore')) {
+    tree.appendChild(li);
+    refreshPriorityLocks();
+    refreshArchivedEmpty();
+    chip.hidden = true;
+    return;
+  }
+  if (e.target.closest('.name')) openDetail(li);
+});
+
+function refreshArchivedEmpty() {
+  document.getElementById('archived-empty').hidden = archivedList.children.length > 0;
+}
+
+/* ---------- segmented ---------- */
+
+const segActive = document.getElementById('seg-active');
+const segArchived = document.getElementById('seg-archived');
+const archivedWrap = document.getElementById('archived-wrap');
+function setSegment(archived) {
+  segActive.setAttribute('aria-pressed', String(!archived));
+  segArchived.setAttribute('aria-pressed', String(archived));
+  tree.hidden = archived;
+  archivedWrap.hidden = !archived;
+  if (archived) refreshArchivedEmpty();
+}
+segActive.addEventListener('click', () => setSegment(false));
+segArchived.addEventListener('click', () => setSegment(true));
+
+/* ---------- add goal ---------- */
+
+document.getElementById('add-goal').addEventListener('click', () => {
+  const li = goalLi({ id: 'g' + Date.now(), name: 'New goal', type: 'oneshot', done: 0, total: 0, subs: [] });
+  tree.appendChild(li);
+  refreshPriorityLocks();
+  setSegment(false);
+});
+
+/* ---------- detail page ---------- */
+
+const detail = document.getElementById('detail');
+const listView = document.getElementById('list-view');
+const dName = document.getElementById('d-name');
+const dType = document.getElementById('d-type');
+const dPriority = document.getElementById('d-priority');
+const dProgress = document.getElementById('d-progress');
+const dSubsWrap = document.getElementById('d-subs-wrap');
+const dSubs = document.getElementById('d-subs');
+const dTasks = document.getElementById('d-tasks');
+const dActions = document.getElementById('d-actions');
+const dComplete = document.getElementById('d-complete');
+const dCompleteStrip = document.getElementById('d-complete-strip');
+const dCompleteMsg = document.getElementById('d-complete-msg');
+const dDeleteStrip = document.getElementById('d-delete-strip');
+const dDeleteMsg = document.getElementById('d-delete-msg');
+const dDoneLine = document.getElementById('d-done-line');
+
+function openDetail(li) {
+  currentLi = li;
+  const g = li.dataset;
+  const completed = li.dataset.completed === '1';
+  dName.textContent = g.name;
+  dType.textContent = g.type === 'oneshot' ? 'One-shot' : 'Ongoing';
+  const rowFlag = li.querySelector('.priority-toggle');
+  dPriority.setAttribute('aria-pressed', rowFlag.getAttribute('aria-pressed'));
+  dPriority.hidden = completed;
+  if (g.type === 'oneshot') {
+    dProgress.innerHTML = g.total
+      ? `<span class="bar"><span class="fill" style="width:${Math.round(g.done / g.total * 100)}%"></span></span><span>${g.done} of ${g.total} tasks</span>`
+      : '<span>No tasks yet</span>';
+  } else {
+    dProgress.innerHTML = `<span>${g.done} tasks done</span>`;
+  }
+  const subLis = [...li.querySelectorAll(':scope > .subgoals > li.goal')];
+  dSubsWrap.hidden = subLis.length === 0;
+  dSubs.innerHTML = '';
+  subLis.forEach(s => {
+    const item = document.createElement('li');
+    const meta = s.dataset.type === 'oneshot'
+      ? `${s.dataset.done} of ${s.dataset.total}`
+      : `${s.dataset.done} done`;
+    item.innerHTML = `<span class="t-name">${s.dataset.name}</span><span class="t-status">${meta}</span>`;
+    dSubs.appendChild(item);
+  });
+  dTasks.innerHTML = '';
+  const tasks = TASKS[g.id] || [];
+  if (!tasks.length) {
+    const item = document.createElement('li');
+    item.className = 'empty';
+    item.textContent = 'No linked tasks yet. Add them in Tasks.';
+    dTasks.appendChild(item);
+  } else {
+    tasks.forEach(([name, st]) => {
+      const item = document.createElement('li');
+      if (st === 'Done') item.className = 'done';
+      item.innerHTML = `<span class="t-name">${name}</span><span class="t-status">${st}</span>`;
+      dTasks.appendChild(item);
+    });
+  }
+  const unfinished = g.type === 'oneshot' && g.total ? g.total - g.done : 0;
+  dComplete.hidden = g.type !== 'oneshot' || completed;
+  dCompleteMsg.textContent = `Completing keeps ${unfinished} unfinished task${unfinished === 1 ? '' : 's'} active without this goal. You can undo.`;
+  dCompleteStrip.hidden = true;
+  dDeleteStrip.hidden = true;
+  dDeleteMsg.textContent = `Deletes this goal, its subgoals and their history. Linked tasks are kept and lose this goal.`;
+  dDoneLine.hidden = !completed;
+  dActions.hidden = completed;
+  listView.hidden = true;
+  detail.hidden = false;
+  scrollTo(0, 0);
+}
+
+function backToList() {
+  detail.hidden = true;
+  listView.hidden = false;
+  currentLi = null;
+}
+
+document.getElementById('back').addEventListener('click', e => { e.preventDefault(); backToList(); });
+
+dPriority.addEventListener('click', () => {
+  const rowFlag = currentLi.querySelector('.priority-toggle');
+  const pressed = rowFlag.getAttribute('aria-pressed') === 'true';
+  if (!pressed && activePriorityCount() >= 3) { backToList(); statusMsg('All 3 priority slots are in use'); return; }
+  rowFlag.setAttribute('aria-pressed', String(!pressed));
+  currentLi.querySelector('.flag-mark').hidden = pressed;
+  dPriority.setAttribute('aria-pressed', String(!pressed));
+  refreshPriorityLocks();
+});
+
+dComplete.addEventListener('click', () => {
+  dCompleteStrip.hidden = false;
+  dDeleteStrip.hidden = true;
+});
+document.getElementById('d-complete-no').addEventListener('click', () => { dCompleteStrip.hidden = true; });
+document.getElementById('d-complete-yes').addEventListener('click', () => {
+  currentLi.dataset.completed = '1';
+  const rowFlag = currentLi.querySelector('.priority-toggle');
+  rowFlag.setAttribute('aria-pressed', 'false');
+  currentLi.querySelector('.flag-mark').hidden = true;
+  refreshPriorityLocks();
+  const meta = currentLi.querySelector(':scope > .row .meta');
+  if (meta) meta.innerHTML = '<span class="count">Completed</span>';
+  dCompleteStrip.hidden = true;
+  dActions.hidden = true;
+  dPriority.hidden = true;
+  dDoneLine.hidden = false;
+});
+document.getElementById('d-undo-complete').addEventListener('click', () => {
+  delete currentLi.dataset.completed;
+  const g = currentLi.dataset;
+  const meta = currentLi.querySelector(':scope > .row .meta');
+  if (meta) meta.innerHTML = metaHTML({ type: g.type, done: +g.done, total: +g.total });
+  dDoneLine.hidden = true;
+  dActions.hidden = false;
+  dPriority.hidden = false;
+});
+
+document.getElementById('d-archive').addEventListener('click', () => {
+  archivedList.appendChild(currentLi);
+  refreshPriorityLocks();
+  refreshArchivedEmpty();
+  backToList();
+  showChip('Goal archived.', currentLi);
+});
+
+document.getElementById('d-delete').addEventListener('click', () => {
+  dDeleteStrip.hidden = false;
+  dCompleteStrip.hidden = true;
+});
+document.getElementById('d-delete-no').addEventListener('click', () => { dDeleteStrip.hidden = true; });
+document.getElementById('d-delete-yes').addEventListener('click', () => {
+  const gone = currentLi;
+  gone.remove();
+  refreshPriorityLocks();
+  refreshArchivedEmpty();
+  backToList();
+  showChip('Goal deleted.', null);
+});
+
+/* ---------- global ---------- */
+
+document.addEventListener('click', e => {
+  if (!pop.hidden && !pop.contains(e.target) && !e.target.closest('.move-btn')) closePop();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closePop(); if (!chip.hidden) chip.hidden = true; }
+});
+
+refreshPriorityLocks();
+refreshArchivedEmpty();
+</script>
+</body>
+</html>
