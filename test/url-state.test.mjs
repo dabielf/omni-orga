@@ -74,12 +74,16 @@ test('calendar and stats URLs keep only durable valid state', () => {
   assert.deepEqual(sanitizeCalendarSearch({ date: '2026-02-31' }), {})
   assert.equal(calendarUrl({ month: '2026-08' }), '/calendar?month=2026-08')
 
-  assert.deepEqual(sanitizeStatsSearch({ period: 'week' }), { period: 'week' })
+  assert.deepEqual(sanitizeStatsSearch({ period: '30' }), { period: '30' })
+  assert.deepEqual(sanitizeStatsSearch({ period: 90 }), { period: '90' })
+  assert.deepEqual(sanitizeStatsSearch({ period: 'year' }), {})
+  assert.deepEqual(sanitizeStatsSearch({ period: '' }), {})
   // Out-of-range calendar dates must be dropped, not throw (bad value ignored).
   assert.deepEqual(sanitizeCalendarSearch({ date: '2026-13-01' }), {})
   assert.deepEqual(sanitizeCalendarSearch({ month: '2026-13' }), {})
   assert.equal(calendarUrl({ date: '2026-13-01' }), '/calendar')
   assert.equal(calendarUrl({ month: '2026-13' }), '/calendar')
 
-  assert.equal(statsUrl({ period: 'year' }), '/stats?period=year')
+  assert.equal(statsUrl({ period: '365' }), '/stats?period=365')
+  assert.equal(statsUrl({}), '/stats')
 })
