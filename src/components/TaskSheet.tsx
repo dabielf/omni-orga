@@ -262,9 +262,14 @@ export function CreateSheet({ onClose }: { onClose: () => void }) {
   }, [])
 
   const patch = (changes: Partial<CreateDraft>) => {
-    const next = { ...draft, ...changes }
-    rememberDraft(next)
-    setDraft(next)
+    // Apply against the current draft: callbacks captured by notices (the
+    // date-replacement Undo) may run after further edits; spreading over the
+    // captured render draft would silently drop those interim edits.
+    setDraft((current) => {
+      const next = { ...current, ...changes }
+      rememberDraft(next)
+      return next
+    })
   }
 
   const replaceDate = (kind: 'ideal' | 'deadline', value: string | null) => {

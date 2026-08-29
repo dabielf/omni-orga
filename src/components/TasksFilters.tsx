@@ -7,9 +7,10 @@ import {
 } from '../lib/urlState'
 import { useTasksUi } from './tasksContext'
 
-const IDEAL_LABELS: Record<string, string> = {
+const IDEAL_LABELS: Record<IdealDatePreset | 'any', string> = {
   any: 'Any date',
   today: 'Ideal today',
+  week: 'Ideal this week',
   passed: 'Ideal date passed',
   none: 'No ideal date',
 }

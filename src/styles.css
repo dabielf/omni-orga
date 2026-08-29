@@ -950,9 +950,8 @@ button.rail-disclosure:hover {
 }
 
 .sheet-title:focus {
-  border-color: var(--line);
+  border-color: var(--focus);
   background: var(--surface);
-  outline: none;
 }
 
 .sheet-missing {
@@ -1196,9 +1195,8 @@ button.rail-disclosure:hover {
 }
 
 .subtask-name:focus {
-  border-color: var(--line);
+  border-color: var(--focus);
   background: var(--surface);
-  outline: none;
 }
 
 .icon-btn {
