@@ -420,6 +420,7 @@ function renderC(el) {
               <span class="s-name">${esc(r.name)}</span>
               <span class="spacer" style="flex:1"></span>
               <span class="count-txt">${n} ${n === 1 ? 'time' : 'times'} in ${P.period} days</span>
+              <span class="sub-txt">&asymp;${avgPerWeek(n, P.period)} a week</span>
             </div>`;
           }).join('')}
         </div>` : ''}
