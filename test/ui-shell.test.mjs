@@ -1,10 +1,11 @@
-import assert from 'node:assert/strict'
+import { after, before, test } from 'node:test'
 import { spawnSync } from 'node:child_process'
+import assert from 'node:assert/strict'
 import { mkdtemp } from 'node:fs/promises'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { after, before, test } from 'node:test'
+import { createDomainStore } from '../src/domain/store.ts'
 
 const checkout = new URL('..', import.meta.url)
 const directory = await mkdtemp(join(tmpdir(), 'omni-orga-ui-shell-'))
@@ -36,10 +37,17 @@ async function unusedPort() {
   )
   return port
 }
+let seededGoalId
 
 before(() => {
   const started = runLifecycle('start')
   assert.equal(started.status, 0, started.stderr)
+  // The goals routes render real store data now; seed one record so a
+  // known opaque goal id still resolves server-side.
+  const store = createDomainStore(env.OMNI_ORGA_DATABASE_PATH)
+  const seeded = store.createGoal({ title: 'Steady work', kind: 'ongoing' })
+  store.close()
+  seededGoalId = seeded.id
 })
 
 after(() => {
@@ -50,7 +58,7 @@ test('every shell page and known opaque record renders', async () => {
   const pages = [
     ['/', 'Today'],
     ['/goals', 'Goals'],
-    ['/goals/g_focus_01', 'Steady work'],
+    ['/goals/' + seededGoalId, 'Steady work'],
     ['/tasks', 'Tasks'],
     ['/calendar', 'Calendar'],
     ['/stats', 'Stats'],
