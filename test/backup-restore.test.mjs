@@ -177,7 +177,7 @@ test('restore preserves the live database, installs the backup, and migrates it'
   assert.equal(restored.prepare('SELECT value FROM example').get().value, 'chosen')
   assert.deepEqual(
     restored.prepare('SELECT name FROM schema_migrations').all().map(({ name }) => name),
-    ['001_foundation.sql'],
+    ['001_foundation.sql', '002_domain.sql'],
   )
   restored.close()
 
