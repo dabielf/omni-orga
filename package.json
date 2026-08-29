@@ -9,9 +9,11 @@
     "pnpm": ">=10"
   },
   "scripts": {
+    "backup": "node scripts/backup.mjs",
     "build": "vite build && tsc --noEmit",
     "dev": "node scripts/lifecycle.mjs dev",
     "logs": "node scripts/lifecycle.mjs logs",
+    "restore": "node scripts/restore.mjs",
     "smoke": "node scripts/smoke.mjs",
     "start": "node scripts/lifecycle.mjs start",
     "status": "node scripts/lifecycle.mjs status",

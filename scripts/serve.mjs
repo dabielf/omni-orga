@@ -16,7 +16,7 @@ if (!['normal', 'development'].includes(mode) || !token || !databasePath) {
   throw new Error('The lifecycle command must start the server')
 }
 
-const applied = applyMigrations({ databasePath })
+const applied = await applyMigrations({ databasePath })
 console.log(`${mode} server starting at http://${host}:${port}`)
 if (applied.length) console.log(`applied migrations: ${applied.join(', ')}`)
 
