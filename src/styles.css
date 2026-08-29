@@ -498,6 +498,104 @@ p {
   }
 }
 
+/* ---------- Stats page ---------- */
+
+.stats-counters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2.5rem;
+  margin: 0 0 1.75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.stats-counter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.stats-counter-number {
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.stats-counter-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.stats-sections {
+  border-top: 1px solid var(--line);
+}
+
+.stats-goal {
+  padding: 1rem 0.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.stats-goal-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.stats-goal-line {
+  margin: 0 0 0.35rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.stats-repeatables {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stats-repeatable {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  padding: 0.3rem 0;
+}
+
+.stats-repeatable-name {
+  color: var(--ink);
+}
+
+.stats-repeatable-count {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.stats-completed {
+  margin-top: 1.5rem;
+}
+
+.stats-heading {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.stats-completed-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stats-completed-list li {
+  padding: 0.25rem 0.5rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 /* ---------- Goals pages ---------- */
 
 .goals-topbar {

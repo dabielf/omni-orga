@@ -92,11 +92,21 @@ export function calendarUrl(search: Search = {}) {
   return '/calendar'
 }
 
-export type StatsSearch = { period?: 'week' | 'year' }
+export const statsPeriods = ['30', '90', '365'] as const
+export type StatsPeriod = (typeof statsPeriods)[number]
+
+/**
+ * The stats period lives in the URL; an omitted period means the 30-day
+ * default. The router's qss query decoder coerces numeric strings at parse
+ * time (see sanitizeTasksSearch), so a pasted `?period=90` arrives as the
+ * number 90 and is normalized back to the '90' preset here.
+ */
+export type StatsSearch = { period?: StatsPeriod }
 
 export function sanitizeStatsSearch(search: Search): StatsSearch {
-  return search.period === 'week' || search.period === 'year'
-    ? { period: search.period }
+  const period = String(search.period)
+  return (statsPeriods as readonly string[]).includes(period)
+    ? { period: period as StatsPeriod }
     : {}
 }
 
