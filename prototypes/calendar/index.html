@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Calendar · Omni-orga prototype</title>
+<!--
+  Throwaway prototype for wayfinder ticket #12 (Shape Calendar planning).
+  Question: how should Calendar show and change which tasks are planned for future days
+  while staying useful on a small screen and distinct from an ideal completion date?
+
+  Three variants, switchable with ?variant= (or the arrow keys / bottom pill), one static route:
+    A — Month grid      (Apple-Calendar-like month, click a day for its plan panel)
+    B — Week lanes      (two weeks as columns, unscheduled pool in a right rail)
+    C — Agenda list     (upcoming days stacked, "Not planned" section on top; narrow-screen native)
+
+  Shared move popover: pick a new day (days after an unpassed deadline are disabled),
+  or remove the task from its day. All state is in-memory.
+  Mark legend (the "distinct dates" question):
+    mint chip   = scheduled day (the day you plan to do it)
+    ghost chip  = ideal completion date (soft wish, no behavior)
+    warn chip   = deadline (hard, factual warning only)
+
+  Scene: the same tired user at home in daylight, glancing ahead without facing the whole workload.
+  Run: python3 -m http.server 8150 --bind 127.0.0.1 --directory prototypes/calendar
+  Open: http://127.0.0.1:8150/?variant=A
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --surface: oklch(0.99 0.003 155);
+  --panel: oklch(0.962 0.007 155);
+  --border: oklch(0.908 0.012 155);
+  --border-strong: oklch(0.84 0.018 155);
+  --text: oklch(0.29 0.02 155);
+  --text-2: oklch(0.50 0.02 155);
+  --mint: #b8e2c8;
+  --mint-soft: oklch(0.955 0.03 155);
+  --mint-edge: oklch(0.72 0.06 155);
+  --action: oklch(0.46 0.095 155);
+  --action-hover: oklch(0.41 0.095 155);
+  --warn: oklch(0.45 0.11 35);
+  --warn-edge: oklch(0.82 0.06 35);
+  --warn-soft: oklch(0.965 0.015 35);
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.45;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+::focus-visible { outline: 2px solid var(--action); outline-offset: 2px; border-radius: 4px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; }
+}
+
+/* ---------- shell ---------- */
+.app { display: flex; min-height: 100vh; }
+.sidebar {
+  width: 208px; flex: 0 0 auto;
+  background: var(--panel); border-right: 1px solid var(--border);
+  padding: 20px 12px;
+}
+.app-name { font-size: 13px; font-weight: 600; color: var(--text-2); padding: 0 12px 14px; }
+.sidebar nav { display: flex; flex-direction: column; gap: 2px; }
+.sidebar nav a {
+  display: block; padding: 7px 12px; border-radius: 6px;
+  color: var(--text-2); text-decoration: none; font-weight: 500;
+}
+.sidebar nav a:hover { background: var(--surface); color: var(--text); }
+.sidebar nav a[aria-current="page"] { background: var(--mint-soft); color: var(--text); }
+main { flex: 1; min-width: 0; }
+.content { max-width: 900px; padding: 28px 36px 120px; }
+.topbar { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; flex-wrap: wrap; }
+.topbar h1 { font-size: 20px; font-weight: 600; margin: 0 auto 0 0; }
+.status { min-height: 22px; margin: 2px 0 10px; font-size: 13px; color: var(--text-2); }
+.legend { display: flex; gap: 14px; align-items: center; margin: 0 0 14px; font-size: 12px; color: var(--text-2); flex-wrap: wrap; }
+.legend .sample { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ---------- chips ---------- */
+.tchip {
+  display: inline-flex; align-items: center; gap: 6px;
+  max-width: 100%; text-align: left;
+  border-radius: 5px; padding: 2.5px 8px; font-size: 12.5px;
+  background: var(--mint-soft); border: 1px solid var(--mint-edge); color: var(--text);
+}
+.tchip:hover { background: var(--mint); }
+.tchip .g { color: var(--text-2); font-size: 11.5px; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tchip.ideal { background: var(--surface); border: 1px dashed var(--border-strong); color: var(--text-2); }
+.tchip.ideal:hover { background: var(--panel); }
+.tchip.deadline { background: var(--warn-soft); border-color: var(--warn-edge); color: var(--warn); }
+.tchip.deadline:hover { background: var(--warn-soft); }
+.tchip .rep { flex: 0 0 auto; display: inline-flex; color: inherit; opacity: 0.75; }
+
+/* ---------- A: month grid ---------- */
+.month-head { display: flex; align-items: baseline; gap: 12px; margin: 4px 0 8px; }
+.month-head h2 { font-size: 15px; font-weight: 600; margin: 0; }
+.month-head .range { color: var(--text-2); font-size: 12.5px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); border-top: 1px solid var(--border); border-left: 1px solid var(--border); }
+.cal-grid .wd {
+  padding: 4px 8px; font-size: 11.5px; color: var(--text-2);
+  border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.cal-cell {
+  min-height: 92px; padding: 4px 6px 6px;
+  border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 3px; text-align: left; align-items: stretch;
+}
+.cal-cell:hover { background: var(--panel); }
+.cal-cell.selected { background: var(--mint-soft); }
+.cal-cell.other { background: oklch(0.985 0.002 155); }
+.cal-cell.other .dnum { color: oklch(0.75 0.015 155); }
+.dnum { font-size: 12px; color: var(--text-2); padding: 0 2px; }
+.cal-cell.today .dnum {
+  width: 20px; height: 20px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--mint); color: var(--text); font-weight: 600;
+}
+.cal-cell .tchip { font-size: 11.5px; padding: 1.5px 6px; }
+.cell-more { font-size: 11px; color: var(--text-2); padding: 0 2px; text-align: left; }
+.day-panel { border: 1px solid var(--border); border-radius: 8px; margin-top: 16px; padding: 14px 16px; }
+.day-panel h3 { margin: 0 0 2px; font-size: 14.5px; font-weight: 600; }
+.day-panel .dsub { color: var(--text-2); font-size: 12.5px; margin: 0 0 10px; }
+.plan-row { display: flex; align-items: center; gap: 10px; padding: 7px 4px; border-bottom: 1px solid var(--border); }
+.plan-row:last-child { border-bottom: 0; }
+.plan-row .tchip { flex: 0 0 auto; }
+.plan-row .ideal-note { color: var(--text-2); font-size: 12px; }
+.plan-row .dl-note { color: var(--warn); font-size: 12px; }
+.plan-row button.move { color: var(--text-2); font-size: 12.5px; text-decoration: underline; text-underline-offset: 3px; }
+.plan-row button.move:hover { color: var(--text); }
+
+/* ---------- B: week lanes ---------- */
+.lanes-wrap { display: flex; gap: 14px; align-items: flex-start; }
+.lanes { flex: 1; min-width: 0; overflow-x: auto; display: flex; gap: 8px; padding-bottom: 8px; }
+.lane { flex: 0 0 128px; }
+.lane-head { padding: 2px 4px 6px; }
+.lane-head .wd2 { font-size: 11.5px; color: var(--text-2); display: block; }
+.lane-head .dn { font-size: 13px; font-weight: 500; }
+.lane-head.today .dn { color: var(--action); }
+.lane-body { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); min-height: 260px; padding: 6px; display: flex; flex-direction: column; gap: 5px; }
+.lane-body .tchip { font-size: 12px; }
+.lane-body .none { color: oklch(0.8 0.012 155); font-size: 11.5px; padding: 2px 4px; }
+.pool {
+  width: 240px; flex: 0 0 auto;
+  border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px 14px;
+}
+.pool h3 { margin: 0 0 2px; font-size: 13px; font-weight: 600; }
+.pool .dsub { color: var(--text-2); font-size: 12px; margin: 0 0 8px; }
+.pool-row { display: flex; align-items: center; gap: 8px; padding: 6px 2px; border-bottom: 1px solid var(--border); }
+.pool-row:last-child { border-bottom: 0; }
+.pool-row .nm { flex: 1; min-width: 0; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pool-row .gl { color: var(--text-2); font-size: 11.5px; }
+.pool-row button.plan-btn {
+  border: 1px solid var(--border); border-radius: 5px; padding: 2px 8px; font-size: 12px; color: var(--text-2);
+}
+.pool-row button.plan-btn:hover { color: var(--text); border-color: var(--border-strong); background: var(--panel); }
+.pool-row .ideal-note { color: var(--text-2); font-size: 11.5px; }
+.pool-row .dl-note { color: var(--warn); font-size: 11.5px; }
+
+/* ---------- C: agenda ---------- */
+.agenda-group { margin-top: 18px; }
+.agenda-day { display: flex; align-items: baseline; gap: 10px; padding: 0 4px 6px; }
+.agenda-day h3 { margin: 0; font-size: 14px; font-weight: 600; }
+.agenda-day .rel { color: var(--text-2); font-size: 12.5px; }
+.agenda-group .trow {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 6px; border-top: 1px solid var(--border);
+}
+.agenda-group .trow:last-child { border-bottom: 1px solid var(--border); }
+.agenda-group .trow:hover { background: var(--panel); }
+.agenda-group .tchip { flex: 0 1 auto; }
+.agenda-group .ideal-note, .agenda-group .dl-note { font-size: 12px; }
+.agenda-group .dl-note { color: var(--warn); }
+.agenda-group button.move { margin-left: auto; color: var(--text-2); font-size: 12.5px; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
+.agenda-group button.move:hover { color: var(--text); }
+.empt-day { color: oklch(0.8 0.012 155); font-size: 12.5px; padding: 8px 6px; border-top: 1px solid var(--border); }
+.notplanned { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px 6px; margin-bottom: 8px; }
+.notplanned h3 { margin: 0 0 2px; font-size: 13px; font-weight: 600; }
+.notplanned .dsub { color: var(--text-2); font-size: 12px; margin: 0 0 6px; }
+.notplanned .pool-row button.plan-btn { border: 1px solid var(--border); border-radius: 5px; padding: 2px 8px; font-size: 12px; color: var(--text-2); }
+.notplanned .pool-row button.plan-btn:hover { color: var(--text); border-color: var(--border-strong); background: var(--panel); }
+
+/* ---------- move popover ---------- */
+.overlay { position: fixed; inset: 0; background: oklch(0.3 0.02 155 / 0.25); display: flex; align-items: center; justify-content: center; z-index: 50; }
+.pop {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: 0 12px 32px oklch(0.3 0.02 155 / 0.18);
+  width: 340px; max-width: calc(100vw - 32px); max-height: 80vh; overflow: auto;
+  padding: 16px 18px;
+}
+.pop h3 { margin: 0; font-size: 14.5px; font-weight: 600; }
+.pop .psub { color: var(--text-2); font-size: 12.5px; margin: 2px 0 12px; }
+.day-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.day-picker button {
+  border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; text-align: left; font-size: 12.5px;
+}
+.day-picker button:hover { background: var(--panel); }
+.day-picker button:disabled { color: oklch(0.78 0.01 155); cursor: default; background: var(--panel); }
+.day-picker button.current { background: var(--mint-soft); border-color: var(--mint-edge); }
+.pop .why { font-size: 11.5px; color: var(--text-2); margin: 10px 0 0; }
+.pop .pop-actions { display: flex; gap: 10px; margin-top: 14px; align-items: center; }
+.pop .remove { color: var(--warn); font-size: 12.5px; text-decoration: underline; text-underline-offset: 3px; }
+.pop .cancel { margin-left: auto; color: var(--text-2); font-size: 12.5px; }
+
+/* ---------- prototype switcher (not part of the design) ---------- */
+.proto-bar {
+  position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 60;
+  display: flex; align-items: center; gap: 2px;
+  background: oklch(0.24 0.02 155); color: white;
+  border-radius: 999px; padding: 5px 8px;
+  box-shadow: 0 8px 24px oklch(0.3 0.02 155 / 0.3);
+  border: 1px solid oklch(0.4 0.02 155);
+}
+.proto-bar button { color: white; display: inline-flex; padding: 5px 9px; border-radius: 999px; }
+.proto-bar button:hover { background: oklch(0.36 0.02 155); }
+.proto-bar .label { font-size: 12.5px; padding: 0 8px; color: oklch(0.95 0.01 155); white-space: nowrap; }
+.err-banner {
+  position: fixed; left: 12px; top: 12px; z-index: 99;
+  background: var(--warn); color: white; border-radius: 8px;
+  padding: 10px 14px; font-size: 12.5px; max-width: 480px;
+  font-family: ui-monospace, monospace;
+}
+@media (max-width: 860px) {
+  .sidebar { display: none; }
+  .content { padding: 20px 16px 120px; }
+  .lanes-wrap { flex-direction: column-reverse; }
+  .pool { width: 100%; }
+  .cal-cell { min-height: 64px; }
+}
+.cal-scroll { overflow-x: auto; }
+.cal-scroll .cal-grid { min-width: 660px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="app-name">Omni-orga</div>
+    <nav>
+      <a href="#">Dashboard</a>
+      <a href="#">Goals</a>
+      <a href="#">Tasks</a>
+      <a href="#" aria-current="page">Calendar</a>
+      <a href="#">Stats</a>
+    </nav>
+  </aside>
+  <main>
+    <div class="content">
+      <div class="topbar"><h1>Calendar</h1></div>
+      <p class="status" id="status" role="status"></p>
+      <div class="legend" aria-hidden="true">
+        <span class="sample"><span class="tchip">Scheduled day</span> plan to do it</span>
+        <span class="sample"><span class="tchip ideal">Ideal date</span> soft wish</span>
+        <span class="sample"><span class="tchip deadline">Deadline</span> hard limit</span>
+      </div>
+      <div id="body"></div>
+    </div>
+  </main>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="pop" id="pop" role="dialog" aria-modal="true" aria-label="Move task"></div>
+</div>
+
+<div class="proto-bar" id="proto-bar">
+  <button id="pb-prev" aria-label="Previous variant">&#8249;</button>
+  <span class="label" id="pb-label"></span>
+  <button id="pb-next" aria-label="Next variant">&#8250;</button>
+</div>
+
+<div class="err-banner" id="err-banner" hidden></div>
+
+<script>
+'use strict';
+window.addEventListener('error', e => {
+  const b = document.getElementById('err-banner');
+  b.hidden = false;
+  b.textContent = 'Prototype error: ' + e.message;
+});
+
+/* ================= stub data =================
+   Scheduled days are offsets from today (1 = tomorrow).
+   The real system stores a scheduled day per task; it clears quietly
+   when the day passes unfinished or the task becomes blocked. */
+
+const DAY = 86400000;
+const today = new Date();
+today.setHours(12, 0, 0, 0);
+const T = today.getTime();
+const dayDate = d => new Date(T + d * DAY);
+
+const goals = {
+  selfcare: 'Self-care',
+  work: 'Professional work',
+  house: 'Move house',
+  admin: 'Admin',
+  home: 'Home',
+};
+
+let tasks = [
+  { id: 't1', name: 'Book moving van',     goal: 'house',    sched: 3 },
+  { id: 't2', name: 'Call the plumber',    goal: 'house',    sched: 1 },
+  { id: 't3', name: 'Draft Q3 report',     goal: 'work',     sched: 2, deadline: 7 },
+  { id: 't4', name: 'Send passport form',  goal: 'admin',    sched: 5, ideal: 12 },
+  { id: 't5', name: '20 min walk',         goal: 'selfcare', sched: 1, repeat: true },
+  { id: 't6', name: 'Push on GitHub',      goal: 'work',     sched: 2, repeat: true },
+  { id: 't8', name: 'Outline conference talk', goal: 'work', sched: 8, ideal: 8 },
+  { id: 't9', name: 'Water the plants',    goal: 'home',     sched: 4, repeat: true },
+];
+
+const unplanned = [
+  { id: 'u1', name: 'Send the overdue invoice', goal: 'work',  deadline: -2 },
+  { id: 'u2', name: 'Pick up new glasses',      goal: 'admin', ideal: 4 },
+  { id: 'u3', name: 'Back up photo library',    goal: 'home' },
+  { id: 'u4', name: 'Plan next week menu',      goal: 'selfcare' },
+];
+
+const findTask = id => [...tasks, ...unplanned].find(t => t.id === id);
+
+/* ================= state ================= */
+
+const P = { variant: 'A', selectedDay: 3, popFor: null };
+
+function readParams() {
+  const q = new URLSearchParams(location.search);
+  const v = (q.get('variant') || 'A').toUpperCase();
+  if (['A', 'B', 'C'].includes(v)) P.variant = v;
+}
+function pushParams() {
+  const q = new URLSearchParams(location.search);
+  q.set('variant', P.variant);
+  history.replaceState(null, '', location.pathname + '?' + q);
+}
+
+/* ================= helpers ================= */
+
+const WD_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const fmtD = t => t.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+const relLabel = d => d === 1 ? 'Tomorrow' : WD_SHORT[dayDate(d).getDay()] + ' ' + fmtD(dayDate(d));
+
+function chip(t, extraCls) {
+  const cls = t.sched !== null && t.sched !== undefined ? '' : (t.deadline !== undefined ? 'deadline' : 'ideal');
+  return `<span class="tchip ${cls} ${extraCls || ''}" role="button" tabindex="0" data-pop="${t.id}" title="${esc(t.name)}">
+    <span class="g">${esc(t.name)}</span>${t.repeat ? REP_SVG : ''}
+  </span>`;
+}
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+const REP_SVG = '<span class="rep" aria-label="repeatable"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M13 8a5 5 0 1 1-1.5-3.5M13 2v3h-3"/></svg></span>';
+
+/* ================= shared move popover ================= */
+
+function openPopover(taskId) {
+  P.popFor = taskId;
+  const t = findTask(taskId);
+  const from = unplanned.includes(t) ? 'not planned' : 'currently ' + relLabel(t.sched);
+  const options = [];
+  for (let d = 1; d <= 14; d++) {
+    const afterDeadline = t.deadline !== undefined && t.deadline >= 0 && d > t.deadline;
+    const pastDeadline = t.deadline !== undefined && t.deadline < 0;
+    options.push(`<button data-day="${d}" ${afterDeadline ? 'disabled' : ''} ${t.sched === d ? 'class="current"' : ''}>
+      ${relLabel(d)}${afterDeadline ? ' · after deadline' : ''}</button>`);
+  }
+  document.getElementById('pop').innerHTML = `
+    <h3>${esc(t.name)}</h3>
+    <p class="psub">${esc(from)}${t.deadline !== undefined ? (t.deadline < 0 ? ' · deadline was ' + fmtD(dayDate(t.deadline)) : ' · deadline ' + fmtD(dayDate(t.deadline))) : ''}${t.ideal !== undefined ? ' · ideal ' + fmtD(dayDate(t.ideal)) : ''}</p>
+    <div class="day-picker">${options.join('')}</div>
+    <p class="why">Days after an unpassed deadline are not offered.</p>
+    <div class="pop-actions">
+      ${t.sched !== null && t.sched !== undefined ? '<button class="remove" data-remove>Remove from ' + esc(relLabel(t.sched)) + '</button>' : ''}
+      <button class="cancel" data-cancel>Cancel</button>
+    </div>`;
+  document.getElementById('overlay').hidden = false;
+}
+
+function closePopover() {
+  P.popFor = null;
+  document.getElementById('overlay').hidden = true;
+}
+
+document.getElementById('overlay').addEventListener('click', e => {
+  const t = findTask(P.popFor);
+  if (e.target.closest('[data-cancel]') || e.target === e.currentTarget) return closePopover();
+  const dayBtn = e.target.closest('[data-day]');
+  if (dayBtn && t && !dayBtn.disabled) {
+    if (unplanned.includes(t)) {
+      unplanned.splice(unplanned.indexOf(t), 1);
+      t.sched = Number(dayBtn.dataset.day);
+      tasks.push(t);
+    } else {
+      t.sched = Number(dayBtn.dataset.day);
+    }
+    closePopover();
+    renderAll();
+    return;
+  }
+  if (e.target.closest('[data-remove]') && t) {
+    t.sched = null;
+    tasks.splice(tasks.indexOf(t), 1);
+    unplanned.push(t);
+    closePopover();
+    renderAll();
+  }
+});
+
+/* ================= variant A: month grid ================= */
+
+function renderA(el) {
+  const gridStart = new Date(today);
+  gridStart.setDate(today.getDate() - ((today.getDay() + 6) % 7)); // Monday of the current week
+  const cells = [];
+  for (let i = 0; i < 35; i++) {
+    const dt = new Date(gridStart);
+    dt.setDate(gridStart.getDate() + i);
+    const off = Math.round((dt - today) / DAY);
+    const isPast = off < 0;
+    const isToday = off === 0;
+    const dayTasks = tasks.filter(t => t.sched === off);
+    const shown = dayTasks.slice(0, 3);
+    cells.push(`<button class="cal-cell ${isPast ? 'other' : ''} ${isToday ? 'today' : ''} ${P.selectedDay === off ? 'selected' : ''}" data-day="${off}" aria-pressed="${P.selectedDay === off}">
+      <span class="dnum">${dt.getDate()}</span>
+      ${shown.map(t => chip(t)).join('')}
+      ${dayTasks.length > 3 ? `<span class="cell-more">+${dayTasks.length - 3} more</span>` : ''}
+    </button>`);
+  }
+  const sel = tasks.filter(t => t.sched === P.selectedDay);
+  el.innerHTML = `
+    <div class="month-head"><h2>Coming weeks</h2><span class="range">${fmtD(gridStart)} to ${fmtD(dayDate(34))}</span></div>
+    <div class="cal-scroll"><div class="cal-grid">
+      ${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(w => `<span class="wd">${w}</span>`).join('')}
+      ${cells.join('')}
+    </div></div>
+    <div class="day-panel">
+      <h3>${P.selectedDay === 0 ? 'Today' : relLabel(P.selectedDay)}</h3>
+      <p class="dsub">${sel.length ? sel.length + (sel.length === 1 ? ' task planned' : ' tasks planned') : 'Nothing planned yet'}</p>
+      ${sel.map(t => `<div class="plan-row">${chip(t)}
+        ${t.ideal !== undefined ? `<span class="ideal-note">ideal ${fmtD(dayDate(t.ideal))}</span>` : ''}
+        ${t.deadline !== undefined ? `<span class="dl-note">deadline ${fmtD(dayDate(t.deadline))}</span>` : ''}
+        <button class="move" data-pop="${t.id}">Move</button></div>`).join('') || '<div class="empt-day">Pick a task from the day grid or plan one from Tasks.</div>'}
+    </div>`;
+}
+
+/* ================= variant B: week lanes ================= */
+
+function renderB(el) {
+  const lanes = [];
+  for (let d = 0; d <= 13; d++) {
+    const dt = dayDate(d);
+    const dayTasks = tasks.filter(t => t.sched === d);
+    lanes.push(`<div class="lane">
+      <div class="lane-head ${d === 0 ? 'today' : ''}"><span class="wd2">${WD_SHORT[dt.getDay()]}</span><span class="dn">${d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : fmtD(dt)}</span></div>
+      <div class="lane-body">${dayTasks.length ? dayTasks.map(t => chip(t)).join('') : '<span class="none">nothing planned</span>'}</div>
+    </div>`);
+  }
+  el.innerHTML = `
+    <div class="lanes-wrap">
+      <div class="lanes">${lanes.join('')}</div>
+      <aside class="pool">
+        <h3>Not planned</h3>
+        <p class="dsub">Available tasks without a day</p>
+        ${unplanned.map(t => `<div class="pool-row">
+          <span class="nm">${esc(t.name)}</span>
+          ${t.ideal !== undefined ? `<span class="ideal-note">ideal ${fmtD(dayDate(t.ideal))}</span>` : ''}
+          ${t.deadline !== undefined ? `<span class="dl-note">${t.deadline < 0 ? 'overdue ' : 'deadline '}${fmtD(dayDate(t.deadline))}</span>` : ''}
+          <button class="plan-btn" data-pop="${t.id}">Plan</button>
+        </div>`).join('')}
+      </aside>
+    </div>`;
+}
+
+/* ================= variant C: agenda list ================= */
+
+function renderC(el) {
+  const groups = [];
+  for (let d = 0; d <= 20; d++) {
+    const dt = dayDate(d);
+    const dayTasks = tasks.filter(t => t.sched === d);
+    const rel = d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : '';
+    groups.push(`<div class="agenda-group">
+      <div class="agenda-day"><h3>${WD_SHORT[dt.getDay()]} ${fmtD(dt)}</h3>${rel ? `<span class="rel">${rel}</span>` : ''}</div>
+      ${dayTasks.length ? dayTasks.map(t => `<div class="trow">${chip(t)}
+        ${t.ideal !== undefined ? `<span class="ideal-note">ideal ${fmtD(dayDate(t.ideal))}</span>` : ''}
+        ${t.deadline !== undefined ? `<span class="dl-note">deadline ${fmtD(dayDate(t.deadline))}</span>` : ''}
+        <button class="move" data-pop="${t.id}">Move</button></div>`).join('')
+      : '<div class="empt-day">Nothing planned</div>'}
+    </div>`);
+  }
+  el.innerHTML = `
+    <div class="notplanned">
+      <h3>Not planned</h3>
+      <p class="dsub">Available tasks waiting for a day</p>
+      ${unplanned.map(t => `<div class="pool-row">
+        <span class="nm">${esc(t.name)}</span>
+        ${t.ideal !== undefined ? `<span class="ideal-note">ideal ${fmtD(dayDate(t.ideal))}</span>` : ''}
+        ${t.deadline !== undefined ? `<span class="dl-note">${t.deadline < 0 ? 'overdue ' : 'deadline '}${fmtD(dayDate(t.deadline))}</span>` : ''}
+        <button class="plan-btn" data-pop="${t.id}">Plan</button>
+      </div>`).join('')}
+    </div>
+    ${groups.join('')}`;
+}
+
+/* ================= render root ================= */
+
+const bodyEl = document.getElementById('body');
+const statusEl = document.getElementById('status');
+
+function renderAll() {
+  statusEl.textContent = 'Scheduled days only: ideal dates and deadlines are shown as context, never as planned work';
+  if (P.variant === 'A') renderA(bodyEl);
+  else if (P.variant === 'B') renderB(bodyEl);
+  else renderC(bodyEl);
+  updateSwitcher();
+}
+
+bodyEl.addEventListener('click', e => {
+  const pop = e.target.closest('[data-pop]');
+  if (pop) { openPopover(pop.dataset.pop); return; }
+  const dayCell = e.target.closest('[data-day]');
+  if (dayCell && P.variant === 'A') {
+    P.selectedDay = Number(dayCell.dataset.day);
+    renderAll();
+  }
+});
+
+/* ================= prototype switcher (not part of the design) ================= */
+
+const VARIANTS = { A: 'A · Month grid', B: 'B · Week lanes', C: 'C · Agenda list' };
+function updateSwitcher() {
+  document.getElementById('pb-label').textContent = VARIANTS[P.variant];
+}
+function cycleVariant(dir) {
+  const order = ['A', 'B', 'C'];
+  P.variant = order[(order.indexOf(P.variant) + dir + 3) % 3];
+  pushParams();
+  renderAll();
+}
+document.getElementById('pb-prev').addEventListener('click', () => cycleVariant(-1));
+document.getElementById('pb-next').addEventListener('click', () => cycleVariant(1));
+document.addEventListener('keydown', e => {
+  if (e.target.matches('input, textarea, select') || e.target.isContentEditable) return;
+  if (e.key === 'ArrowLeft') cycleVariant(-1);
+  if (e.key === 'ArrowRight') cycleVariant(1);
+  if (e.key === 'Enter' && e.target.dataset && e.target.dataset.pop) openPopover(e.target.dataset.pop);
+});
+
+readParams();
+pushParams();
+renderAll();
+</script>
+</body>
+</html>
