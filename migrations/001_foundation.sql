@@ -1,0 +1,1 @@
+-- The migration runner owns schema_migrations. Domain tables start in issue #21.
