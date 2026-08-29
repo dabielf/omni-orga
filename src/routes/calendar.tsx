@@ -1,40 +1,56 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
+import { useRef, useState } from 'react'
 
-import { AppShell, EmptyState, Page } from '../components/AppShell'
+import { AppShell, Page } from '../components/AppShell'
+import { CalendarPage } from '../components/CalendarPage'
 import { useCanonicalUrl } from '../components/useCanonicalUrl'
+import {
+  loadCalendarData,
+  type TasksActionResult,
+} from '../domain/server'
 import { calendarUrl, sanitizeCalendarSearch } from '../lib/urlState'
 
 export const Route = createFileRoute('/calendar')({
   validateSearch: sanitizeCalendarSearch,
-  component: CalendarPage,
+  loader: () => loadCalendarData(),
+  component: CalendarRoute,
 })
 
-function CalendarPage() {
+function CalendarRoute() {
+  const initial = Route.useLoaderData()
   const search = Route.useSearch()
   useCanonicalUrl(calendarUrl(search))
-  const selected = search.date ?? search.month ?? 'Today'
+  const [data, setData] = useState(initial)
+  const [notice, setNotice] = useState<string | null>(null)
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  )
+  const notify = (message: string) => {
+    setNotice(message)
+    clearTimeout(noticeTimer.current)
+    noticeTimer.current = setTimeout(() => setNotice(null), 6000)
+  }
+
+  const apply = (result: TasksActionResult) => {
+    if (result.ok) {
+      setData({
+        today: result.today,
+        tasks: result.tasks,
+      })
+    } else {
+      notify(result.message)
+    }
+  }
 
   return (
     <AppShell>
       <Page title="Calendar">
-        <nav className="segmented-links" aria-label="Calendar view">
-          <Link to="/calendar" search={{}} activeOptions={{ exact: true }}>
-            Today
-          </Link>
-          <Link to="/calendar" search={{ month: '2026-08' }}>
-            August
-          </Link>
-          <Link to="/calendar" search={{ date: '2026-08-29' }}>
-            August 29
-          </Link>
-        </nav>
-        <p className="view-label">{selected}</p>
-        <EmptyState>
-          <p>No tasks scheduled for this view.</p>
-          <Link className="plain-action" to="/tasks">
-            Open Tasks
-          </Link>
-        </EmptyState>
+        <CalendarPage data={data} apply={apply} selectedDate={search.date} />
+        {notice ? (
+          <div className="notice-chip" role="status">
+            <span>{notice}</span>
+          </div>
+        ) : null}
       </Page>
     </AppShell>
   )

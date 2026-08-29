@@ -156,3 +156,26 @@ export const reorderTodayAction = createServerFn({ method: 'POST' })
       store.reorderToday(data.taskId, data.afterTaskId),
     )
   })
+
+export type CalendarData = {
+  today: string
+  tasks: Task[]
+}
+
+/**
+ * The Calendar answer: every active incomplete task. The page derives the
+ * five-week grid, the selected day panel, and the not-planned pool from
+ * these; scheduling changes reuse planTaskAction and unplanTaskAction.
+ */
+export const loadCalendarData = createServerFn({ method: 'GET' }).handler(
+  async (): Promise<CalendarData> => {
+    const { getServerStore, localDay } = await import('./serverStore')
+    const store = await getServerStore()
+    return {
+      today: localDay(),
+      tasks: store
+        .listTasks({})
+        .filter((task) => !task.completedAt && !task.archivedAt),
+    }
+  },
+)
