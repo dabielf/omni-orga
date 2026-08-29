@@ -10,7 +10,11 @@ import {
   setGoalPriorityAction,
 } from '../domain/goalServer'
 import type { Goal, GoalProgress } from '../domain/store'
-import { priorityInUse, topLevelGoals } from '../lib/goalsView'
+import {
+  PRIORITY_LIMIT_MESSAGE,
+  priorityInUse,
+  topLevelGoals,
+} from '../lib/goalsView'
 import { formatShortDate } from '../lib/tasksView'
 import { tasksUrl } from '../lib/urlState'
 import { useGoalsUi } from './goalsContext'
@@ -355,7 +359,7 @@ function GoalRow({
   const subs = data.goals.filter((item) => item.parentId === goal.id)
   const isCollapsed = collapsed.has(goal.id)
   const full = priorityInUse(data.goals) >= 3
-
+  const capped = full && !goal.priority
   const togglePriority = async () => {
     const result = await setGoalPriorityAction({
       data: { goalId: goal.id, priority: !goal.priority },
@@ -438,12 +442,15 @@ function GoalRow({
             className="icon-btn"
             aria-label="Priority"
             aria-pressed={goal.priority}
-            title={
-              full && !goal.priority
-                ? 'All 3 priority slots are in use'
-                : 'Priority'
-            }
-            onClick={() => void togglePriority()}
+            aria-disabled={capped || undefined}
+            title={capped ? PRIORITY_LIMIT_MESSAGE : 'Priority'}
+            onClick={() => {
+              if (capped) {
+                notify(PRIORITY_LIMIT_MESSAGE)
+                return
+              }
+              void togglePriority()
+            }}
           >
             <FlagIcon />
           </button>

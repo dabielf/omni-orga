@@ -10,10 +10,12 @@ import {
   setGoalPriorityAction,
 } from '../domain/goalServer'
 import {
+  PRIORITY_LIMIT_MESSAGE,
   STATUS_LABEL,
   completeWarning,
   deleteWarning,
   goalDetailFromData,
+  priorityInUse,
 } from '../lib/goalsView'
 import { recordUrl, tasksUrl } from '../lib/urlState'
 import { EmptyState, Page } from './AppShell'
@@ -42,6 +44,7 @@ export function GoalDetailView({ goalId }: { goalId: string }) {
 
   const { goal, progress, subgoals, tasks } = detail
   const completed = Boolean(goal.completedAt)
+  const capped = priorityInUse(data.goals) >= 3 && !goal.priority
 
   const togglePriority = async () => {
     const result = await setGoalPriorityAction({
@@ -109,8 +112,16 @@ export function GoalDetailView({ goalId }: { goalId: string }) {
           type="button"
           className="flag-btn"
           aria-pressed={goal.priority}
+          aria-disabled={capped || undefined}
           disabled={completed}
-          onClick={() => void togglePriority()}
+          title={capped ? PRIORITY_LIMIT_MESSAGE : 'Priority'}
+          onClick={() => {
+            if (capped) {
+              notify(PRIORITY_LIMIT_MESSAGE)
+              return
+            }
+            void togglePriority()
+          }}
         >
           <FlagIcon size={13} />
           Priority

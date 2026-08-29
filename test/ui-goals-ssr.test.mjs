@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { mkdtemp } from 'node:fs/promises'
+import { mkdtemp, rm } from 'node:fs/promises'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -44,6 +44,10 @@ async function unusedPort() {
 // embeds raw titles, so assertions must target the rendered markup.
 function goalRow(title) {
   return new RegExp(`goal-name[^>]*>${title}</a>`)
+}
+
+function taskRow(title) {
+  return new RegExp(`task-name[^>]*>${title}</a>`)
 }
 
 let fixture
@@ -100,8 +104,20 @@ before(() => {
     parentId: errands.id,
   })
 
+  const gPri2 = store.createGoal({ title: 'Second focus', kind: 'one_shot' })
+  store.setGoalPriority(gPri2.id, true)
+  const gPri3 = store.createGoal({ title: 'Third focus', kind: 'ongoing' })
+  store.setGoalPriority(gPri3.id, true)
+  const gShip = store.createGoal({ title: 'Ship the release', kind: 'one_shot' })
+  const changelog = store.createTask({
+    title: 'Write the changelog',
+    goalIds: [gShip.id],
+  })
+  store.createTask({ title: 'Tag the release', goalIds: [gShip.id] })
+  store.completeTask(changelog.id, '2026-08-24T08:00:00.000Z')
+
   store.close()
-  fixture = { gAdmin, gEmpty, gHome, gOld, gWork }
+  fixture = { gAdmin, gEmpty, gHome, gOld, gPri2, gPri3, gShip, gWork }
 })
 
 after(() => {
@@ -206,4 +222,103 @@ test('unknown goals keep the factual not-found state', async () => {
   assert.match(html, /<h1[^>]*>Goal not found<\/h1>/)
   assert.match(html, /This goal does not exist\./)
   assert.match(html, /href="\/goals"[^>]*>Goals</)
+})
+
+test('full priority cap disables further toggles with the factual message', async () => {
+  const html = await render('/goals')
+
+  // Three active priority goals are in use: non-priority toggles carry the
+  // exact factual message and cannot take a slot.
+  assert.match(
+    html,
+    /aria-label="Priority" aria-pressed="false" aria-disabled="true" title="All 3 priority slots are in use"/,
+  )
+  // A priority goal's toggle stays available so it can be switched off.
+  assert.doesNotMatch(html, /aria-pressed="true"[^>]*aria-disabled="true"/)
+})
+
+test('completing a one-shot goal keeps unfinished tasks active and undo restores them', async () => {
+  const store = createDomainStore(databasePath)
+  store.completeGoal(fixture.gShip.id)
+  store.close()
+
+  const completed = await render(`/goals/${fixture.gShip.id}`)
+  assert.match(
+    completed,
+    /Goal completed\. Unfinished tasks stay active without it\./,
+  )
+  assert.match(completed, /Undo/)
+  assert.doesNotMatch(completed, /Complete goal/)
+  // Completed task history keeps its goal link; the unfinished task is
+  // gone from the goal and stays active in Tasks.
+  assert.match(completed, taskRow('Write the changelog'))
+  assert.match(completed, /Done/)
+  assert.doesNotMatch(completed, taskRow('Tag the release'))
+
+  // The unfinished task stays active and visible in Tasks, without the goal.
+  const tasks = await render('/tasks')
+  assert.match(tasks, taskRow('Tag the release'))
+
+  // Undo (reopenGoalAction) restores the goal and the task links.
+  const undo = createDomainStore(databasePath)
+  undo.reopenGoal(fixture.gShip.id)
+  undo.close()
+
+  const reopened = await render(`/goals/${fixture.gShip.id}`)
+  assert.match(reopened, /1 of 2 · 50%/)
+  assert.match(reopened, /Complete goal/)
+  assert.match(reopened, taskRow('Tag the release'))
+  assert.doesNotMatch(reopened, /Goal completed\./)
+})
+
+test('a fresh database renders the single create-first-goal action', async () => {
+  const emptyDir = await mkdtemp(join(tmpdir(), 'omni-orga-ui-goals-empty-'))
+  const emptyPort = await unusedPort()
+  const emptyUrl = `http://127.0.0.1:${emptyPort}`
+  const emptyEnv = {
+    ...process.env,
+    OMNI_ORGA_TEST: '1',
+    OMNI_ORGA_PORT: String(emptyPort),
+    OMNI_ORGA_RUNTIME_DIR: join(emptyDir, 'runtime'),
+    OMNI_ORGA_DATABASE_PATH: join(emptyDir, 'omni-orga.sqlite'),
+  }
+  const started = spawnSync(process.execPath, ['scripts/lifecycle.mjs', 'start'], {
+    cwd: checkout,
+    encoding: 'utf8',
+    env: emptyEnv,
+    timeout: 30_000,
+  })
+  assert.equal(started.status, 0, started.stderr)
+  try {
+    const response = await fetch(`${emptyUrl}/goals`)
+    const html = await response.text()
+    assert.equal(response.status, 200)
+    assert.match(html, /<h1[^>]*>Goals<\/h1>/)
+    assert.match(html, /No goals yet\./)
+    assert.match(html, /Create your first goal/)
+  } finally {
+    spawnSync(process.execPath, ['scripts/lifecycle.mjs', 'stop'], {
+      cwd: checkout,
+      encoding: 'utf8',
+      env: emptyEnv,
+      timeout: 30_000,
+    })
+    await rm(emptyDir, { recursive: true, force: true })
+  }
+})
+
+test('archiving a priority goal frees its slot and lands the row in Archived', async () => {
+  const store = createDomainStore(databasePath)
+  store.archiveGoal(fixture.gWork.id)
+  store.close()
+
+  const active = await render('/goals')
+  assert.doesNotMatch(active, goalRow('Steady work'))
+  // The freed slot re-opens the toggles for non-priority goals.
+  assert.doesNotMatch(active, /aria-disabled="true"/)
+
+  const archived = await render('/goals?view=archived')
+  assert.match(archived, goalRow('Steady work'))
+  assert.match(archived, /Restore/)
+  assert.doesNotMatch(archived, goalRow('Home basics'))
 })

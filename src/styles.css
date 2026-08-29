@@ -781,6 +781,12 @@ body.is-goal-dragging {
   font-size: 0.8rem;
 }
 
+.icon-btn[aria-disabled='true'],
+.flag-btn[aria-disabled='true'] {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .flag-btn[aria-pressed='true'] {
   border-color: var(--accent-ink);
   color: var(--accent-ink);

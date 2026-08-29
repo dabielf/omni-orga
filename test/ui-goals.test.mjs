@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  PRIORITY_LIMIT_MESSAGE,
   STATUS_LABEL,
   completeWarning,
   deleteWarning,
@@ -165,4 +166,30 @@ test('deleteWarning names the tree, the history, and the kept tasks', () => {
     deleteWarning(bare),
     'Deletes this goal and its task history. Linked tasks are never deleted automatically.',
   )
+})
+
+test('the client cap hint matches the domain PRIORITY_LIMIT message', async () => {
+  const { mkdtemp, rm } = await import('node:fs/promises')
+  const { tmpdir } = await import('node:os')
+  const { join } = await import('node:path')
+  const store = await import('../src/domain/store.ts')
+  const directory = await mkdtemp(join(tmpdir(), 'omni-orga-goal-hint-'))
+  const goal = store.createDomainStore(join(directory, 'omni-orga.sqlite'))
+  try {
+    const first = goal.createGoal({ title: 'One', kind: 'one_shot' })
+    const second = goal.createGoal({ title: 'Two', kind: 'one_shot' })
+    const third = goal.createGoal({ title: 'Three', kind: 'one_shot' })
+    const fourth = goal.createGoal({ title: 'Four', kind: 'one_shot' })
+    goal.setGoalPriority(first.id, true)
+    goal.setGoalPriority(second.id, true)
+    goal.setGoalPriority(third.id, true)
+    assert.throws(() => goal.setGoalPriority(fourth.id, true), (error) => {
+      assert.equal(error.code, 'PRIORITY_LIMIT')
+      assert.equal(error.message, PRIORITY_LIMIT_MESSAGE)
+      return true
+    })
+  } finally {
+    goal.close()
+    await rm(directory, { recursive: true, force: true })
+  }
 })

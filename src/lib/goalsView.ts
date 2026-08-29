@@ -11,6 +11,12 @@ export function subgoalsOf(goals: Goal[], goalId: string): Goal[] {
 }
 
 /**
+ * Must match the store's PRIORITY_LIMIT message; the client-side cap hint
+ * shows it before the server ever has to answer.
+ */
+export const PRIORITY_LIMIT_MESSAGE = 'All 3 priority slots are in use'
+
+/**
  * Active goals holding one of the three priority slots. Completed and
  * archived goals free their slot, so they never count.
  */
