@@ -10,7 +10,6 @@ import { useTasksUi } from './tasksContext'
 const IDEAL_LABELS: Record<string, string> = {
   any: 'Any date',
   today: 'Ideal today',
-  week: 'Ideal this week',
   passed: 'Ideal date passed',
   none: 'No ideal date',
 }
@@ -18,7 +17,7 @@ const IDEAL_LABELS: Record<string, string> = {
 const IDEAL_OPTIONS = ['any', ...idealDatePresets] as const
 
 export function TasksFilters() {
-  const { search } = useTasksUi()
+  const { search, openCreate } = useTasksUi()
   const navigate = useNavigate()
   const available = search.available === '1'
 
@@ -65,6 +64,13 @@ export function TasksFilters() {
           Available
         </Link>
       </div>
+      <button
+        type="button"
+        className="primary-btn"
+        onClick={openCreate}
+      >
+        New task
+      </button>
     </div>
   )
 }
