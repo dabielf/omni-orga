@@ -198,6 +198,8 @@ function optionalDay(value: string | null | undefined) {
   return value
 }
 
+export type DomainStore = ReturnType<typeof createDomainStore>
+
 export function createDomainStore(
   databasePath: string,
   migrationsDirectory = defaultMigrationsDirectory,
@@ -1075,6 +1077,85 @@ export function createDomainStore(
     }
   }
 
+  const reorderToday = (taskId: string, afterTaskId: string | null) => {
+    const task = getTaskRow(taskId)
+    if (afterTaskId !== null && afterTaskId === taskId) {
+      throw new DomainError(
+        'VALIDATION_FAILED',
+        'A task cannot be placed after itself',
+      )
+    }
+    if (task.completed_at || task.archived_at) {
+      throw new DomainError(
+        'VALIDATION_FAILED',
+        'Only open tasks can be reordered',
+      )
+    }
+    const day = task.scheduled_day
+    if (!day) {
+      throw new DomainError(
+        'VALIDATION_FAILED',
+        'Only scheduled tasks can be reordered',
+      )
+    }
+    if (taskBlocked(taskId)) {
+      throw new DomainError(
+        'VALIDATION_FAILED',
+        'Only available tasks can be reordered',
+      )
+    }
+    const anchor = afterTaskId === null ? null : getTaskRow(afterTaskId)
+    if (anchor) {
+      if (anchor.completed_at || anchor.archived_at) {
+        throw new DomainError(
+          'VALIDATION_FAILED',
+          'The task to place after must be open',
+        )
+      }
+      if (anchor.scheduled_day !== day) {
+        throw new DomainError(
+          'VALIDATION_FAILED',
+          'The task to place after must be scheduled the same day',
+        )
+      }
+      if (taskBlocked(anchor.id)) {
+        throw new DomainError(
+          'VALIDATION_FAILED',
+          'The task to place after must be available',
+        )
+      }
+    }
+
+    return transaction(() => {
+      const open = database
+        .prepare(
+          `SELECT id FROM tasks
+           WHERE scheduled_day = ?
+             AND completed_at IS NULL
+             AND archived_at IS NULL
+             AND NOT EXISTS (
+               SELECT 1 FROM tasks child
+               WHERE child.parent_id = tasks.id
+                 AND child.completed_at IS NULL
+                 AND child.archived_at IS NULL
+             )
+           ORDER BY today_order, created_at`,
+        )
+        .all(day) as Array<{ id: string }>
+      const others = open
+        .map((row) => row.id)
+        .filter((id) => id !== taskId)
+      const position =
+        anchor === null ? 0 : others.indexOf(anchor.id) + 1
+      others.splice(position, 0, taskId)
+      const update = database.prepare(
+        'UPDATE tasks SET today_order = ? WHERE id = ?',
+      )
+      others.forEach((id, index) => update.run(index, id))
+      return getToday(day)
+    })
+  }
+
   const setTaskTreeArchived = (
     taskId: string,
     archivedAt: string | null,
@@ -1536,6 +1617,7 @@ export function createDomainStore(
     listTaskHistory,
     listTasks,
     planTask,
+    reorderToday,
     reopenGoal,
     restoreGoal,
     restoreTask,
