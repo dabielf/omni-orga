@@ -3,9 +3,10 @@ import { spawnSync } from 'node:child_process'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import test from 'node:test'
 
-const bin = new URL('../../bin/omni-orga.mjs', import.meta.url).pathname
+const bin = fileURLToPath(new URL('../../bin/omni-orga.mjs', import.meta.url))
 const localDay = () => {
   const now = new Date()
   const offset = now.getTimezoneOffset() * 60_000
