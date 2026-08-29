@@ -1309,3 +1309,113 @@ button.rail-disclosure:hover {
     visibility: visible;
   }
 }
+
+/* ---------- Today page ---------- */
+
+.today-heading {
+  margin-bottom: 2.2rem;
+}
+
+.today-heading h1 {
+  margin-bottom: 0.35rem;
+}
+
+.today-day {
+  margin-bottom: 0.2rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.today-counts {
+  margin-bottom: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.today-coverage {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.4rem;
+  margin-bottom: 3.25rem;
+  padding: 1.6rem 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.today-coverage-label {
+  margin-bottom: 0.5rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 680;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.today-goals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.today-goal {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-weight: 560;
+  text-decoration: none;
+}
+
+.today-goal:hover {
+  background: var(--nav-surface);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.today-none {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.today-open li {
+  user-select: none;
+  -webkit-user-select: none;
+  /* A long-press drag must not lose the pointer to scrolling. */
+  touch-action: none;
+}
+
+.today-open .task-row[data-state='open'] {
+  cursor: grab;
+}
+
+.today-open .task-row[data-state='open']:active {
+  cursor: grabbing;
+}
+
+.today-open li.is-held .task-row {
+  background: var(--nav-surface);
+  box-shadow: 0 0.75rem 1.8rem oklch(0.3 0.018 157 / 0.14);
+}
+
+.today-hold {
+  margin-bottom: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.today-page .task-row[data-state='complete'] .task-name {
+  color: var(--muted);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+@media (max-width: 44rem) {
+  .today-coverage {
+    grid-template-columns: 1fr;
+  }
+}
+

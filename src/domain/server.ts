@@ -1,6 +1,11 @@
 import { createServerFn } from '@tanstack/react-start'
 
-import type { TasksData, TasksActionResult } from './serverStore'
+import type {
+  TasksData,
+  TasksActionResult,
+  TodayData,
+  TodayActionResult,
+} from './serverStore'
 import type { CreateTaskInput, Task } from './store'
 
 export type { TasksData, TasksActionResult } from './serverStore'
@@ -115,4 +120,39 @@ export const deleteTaskAction = createServerFn({ method: 'POST' })
   .handler(async ({ data }): Promise<TasksActionResult> => {
     const { withStore } = await import('./serverStore')
     return withStore((store) => store.deleteTask(data.taskId))
+  })
+
+export type { TodayData, TodayActionResult } from './serverStore'
+
+// The server-store module pulls in node-only SQLite code, so every handler
+// imports it dynamically to keep the client bundle node-free.
+
+export const loadTodayData = createServerFn({ method: 'GET' }).handler(
+  async (): Promise<TodayData> => {
+    const { todaySnapshot } = await import('./serverStore')
+    return todaySnapshot()
+  },
+)
+
+export const completeTodayTaskAction = createServerFn({ method: 'POST' })
+  .validator(withTaskId)
+  .handler(async ({ data }): Promise<TodayActionResult> => {
+    const { withTodayStore } = await import('./serverStore')
+    return withTodayStore((store) => store.completeTask(data.taskId))
+  })
+
+export const undoTodayTaskCompletionAction = createServerFn({ method: 'POST' })
+  .validator(withTaskId)
+  .handler(async ({ data }): Promise<TodayActionResult> => {
+    const { withTodayStore } = await import('./serverStore')
+    return withTodayStore((store) => store.undoTaskCompletion(data.taskId))
+  })
+
+export const reorderTodayAction = createServerFn({ method: 'POST' })
+  .validator((input: { taskId: string; afterTaskId: string | null }) => input)
+  .handler(async ({ data }): Promise<TodayActionResult> => {
+    const { withTodayStore } = await import('./serverStore')
+    return withTodayStore((store) =>
+      store.reorderToday(data.taskId, data.afterTaskId),
+    )
   })

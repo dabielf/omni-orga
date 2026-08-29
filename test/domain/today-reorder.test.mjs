@@ -138,3 +138,43 @@ test('reorderToday rejects an anchor that is not open and scheduled the same day
     assert.equal(store.getToday(today).open.length, 2)
   })
 })
+
+test('undo restores the exact previous open position without a reorder', async () => {
+  await useStore((store) => {
+    const one = store.createTask({ title: 'One' })
+    const two = store.createTask({ title: 'Two' })
+    const three = store.createTask({ title: 'Three' })
+    planToday(store, one, two, three)
+
+    store.completeTask(two.id)
+    store.undoTaskCompletion(two.id)
+    assert.deepEqual(
+      store.getToday(localDay()).open.map((task) => task.id),
+      [one.id, two.id, three.id],
+    )
+  })
+})
+
+test('undo after a reorder lands the reopened task at its old index', async () => {
+  await useStore((store) => {
+    const a = store.createTask({ title: 'A' })
+    const b = store.createTask({ title: 'B' })
+    const c = store.createTask({ title: 'C' })
+    planToday(store, a, b, c)
+
+    store.completeTask(b.id)
+    // Order while B is completed: A=0, C=1.
+    store.reorderToday(a.id, c.id)
+    assert.deepEqual(
+      store.getToday(localDay()).open.map((task) => task.id),
+      [c.id, a.id],
+    )
+
+    store.undoTaskCompletion(b.id)
+    // B was at index 1 before completion; it returns there, not first.
+    assert.deepEqual(
+      store.getToday(localDay()).open.map((task) => task.id),
+      [c.id, b.id, a.id],
+    )
+  })
+})

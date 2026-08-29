@@ -11,6 +11,7 @@
     "skipLibCheck": true,
     "target": "ES2024",
     "types": ["node", "vite/client"],
+    "allowImportingTsExtensions": true,
     "noEmit": true
   }
 }

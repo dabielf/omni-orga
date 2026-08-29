@@ -823,6 +823,37 @@ export function createDomainStore(
       database
         .prepare('UPDATE tasks SET completed_at = NULL WHERE id = ?')
         .run(taskId)
+      // A reopened planned task keeps its stale today_order while the other
+      // open tasks of its day may have been renumbered by a reorder. Insert
+      // it back at its recorded index so undo restores the previous slot.
+      if (task.scheduled_day && task.today_order !== null) {
+        const others = database
+          .prepare(
+            `SELECT id FROM tasks
+             WHERE scheduled_day = ?
+               AND completed_at IS NULL
+               AND archived_at IS NULL
+               AND id != ?
+               AND NOT EXISTS (
+                 SELECT 1 FROM tasks child
+                 WHERE child.parent_id = tasks.id
+                   AND child.completed_at IS NULL
+                   AND child.archived_at IS NULL
+               )
+             ORDER BY today_order, created_at`,
+          )
+          .all(task.scheduled_day, taskId) as Array<{ id: string }>
+        const ordered = others.map((row) => row.id)
+        ordered.splice(
+          Math.min(task.today_order, ordered.length),
+          0,
+          taskId,
+        )
+        const update = database.prepare(
+          'UPDATE tasks SET today_order = ? WHERE id = ?',
+        )
+        ordered.forEach((id, index) => update.run(index, id))
+      }
       return getTask(taskId)
     })
   }
