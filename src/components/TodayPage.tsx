@@ -17,10 +17,19 @@ const HOLD_MS = 350
 
 export function TodayPage({ initial }: { initial: TodayData }) {
   const [data, setData] = useState<TodayData>(initial)
+  const [notice, setNotice] = useState<string | null>(null)
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const openListRef = useRef<HTMLUListElement>(null)
 
   const apply = (result: TodayActionResult) => {
-    if (result.ok) setData(result)
+    if (result.ok) {
+      setData(result)
+      return
+    }
+    // Success is the state change itself; only failures say anything.
+    setNotice(result.message)
+    if (noticeTimer.current) clearTimeout(noticeTimer.current)
+    noticeTimer.current = setTimeout(() => setNotice(null), 6000)
   }
 
   const complete = (task: Task) => {
@@ -93,6 +102,11 @@ export function TodayPage({ initial }: { initial: TodayData }) {
           </>
         )}
       </div>
+      {notice ? (
+        <div className="notice-chip" role="status">
+          <span>{notice}</span>
+        </div>
+      ) : null}
     </AppShell>
   )
 

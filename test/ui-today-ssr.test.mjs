@@ -175,6 +175,38 @@ function blockedTodayId() {
   }
 }
 
+
+test('a Today task that becomes blocked mid-day leaves the page', async () => {
+  // Seed a fresh task on Today, then block it after the page has shown it.
+  const store = createDomainStore(databasePath)
+  const victim = store.createTask({ title: 'Sweep the porch' })
+  store.planTask(victim.id, today)
+  store.close()
+  assert.match(await render('/'), row('Sweep the porch'))
+
+  const blocking = createDomainStore(databasePath)
+  blocking.createTask({ title: 'Move the ladder', parentId: victim.id })
+  blocking.close()
+
+  const html = await render('/')
+  assert.doesNotMatch(html, row('Sweep the porch'))
+
+  const cleared = createDomainStore(databasePath)
+  try {
+    assert.equal(cleared.getTask(victim.id).scheduledDay, null)
+  } finally {
+    cleared.close()
+  }
+})
+
+test('a task completed yesterday is absent from Today but found in history', async () => {
+  const html = await render('/')
+  assert.doesNotMatch(html, row('File the old form'))
+
+  const history = await render('/tasks?view=completed')
+  assert.match(history, row('File the old form'))
+})
+
 test('coverage splits active goals into covered and not covered today', async () => {
   const html = await render('/')
 

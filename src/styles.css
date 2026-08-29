@@ -1384,6 +1384,8 @@ button.rail-disclosure:hover {
 .today-open li {
   user-select: none;
   -webkit-user-select: none;
+  /* A long-press drag must not lose the pointer to scrolling. */
+  touch-action: none;
 }
 
 .today-open .task-row[data-state='open'] {
@@ -1417,9 +1419,3 @@ button.rail-disclosure:hover {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .today-open li,
-  .today-open .task-row {
-    transition: none;
-  }
-}
