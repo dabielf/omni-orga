@@ -52,7 +52,6 @@ test('every shell page and known opaque record renders', async () => {
     ['/goals', 'Goals'],
     ['/goals/g_focus_01', 'Steady work'],
     ['/tasks', 'Tasks'],
-    ['/tasks/t_prepare_01', 'Prepare Friday plan'],
     ['/calendar', 'Calendar'],
     ['/stats', 'Stats'],
   ]

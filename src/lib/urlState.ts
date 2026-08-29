@@ -1,17 +1,24 @@
-export const shellGoalIds = ['g_focus_01', 'g_home_02']
-
 type Search = Record<string, unknown>
+
+export const idealDatePresets = ['today', 'week', 'passed', 'none'] as const
+export type IdealDatePreset = (typeof idealDatePresets)[number]
+export type TasksViewName = 'completed' | 'archived'
 
 export type TasksSearch = {
   goal?: string
   available?: '1'
+  ideal?: IdealDatePreset
+  view?: TasksViewName
 }
+
+/** Domain ids look like `g_` + lowercase base64url, so hyphens are legal. */
+const wellFormedGoalId = /^[gt]_[a-z0-9_-]+$/
 
 export function sanitizeTasksSearch(search: Search): TasksSearch {
   const clean: TasksSearch = {}
   if (
     search.goal === 'priority' ||
-    (typeof search.goal === 'string' && shellGoalIds.includes(search.goal))
+    (typeof search.goal === 'string' && wellFormedGoalId.test(search.goal))
   ) {
     clean.goal = search.goal
   }
@@ -19,6 +26,15 @@ export function sanitizeTasksSearch(search: Search): TasksSearch {
   // pasted or reloaded `?available=1` arrives as the number 1 regardless of the
   // configured parser; normalize it back before the stringifier writes it out.
   if (String(search.available) === '1') clean.available = '1'
+  if (
+    typeof search.ideal === 'string' &&
+    (idealDatePresets as readonly string[]).includes(search.ideal)
+  ) {
+    clean.ideal = search.ideal as IdealDatePreset
+  }
+  if (search.view === 'completed' || search.view === 'archived') {
+    clean.view = search.view
+  }
   return clean
 }
 
@@ -27,6 +43,8 @@ function taskSearchString(search: Search) {
   const parameters = new URLSearchParams()
   if (clean.goal) parameters.set('goal', clean.goal)
   if (clean.available) parameters.set('available', clean.available)
+  if (clean.ideal) parameters.set('ideal', clean.ideal)
+  if (clean.view) parameters.set('view', clean.view)
   const query = parameters.toString()
   return query ? `?${query}` : ''
 }
