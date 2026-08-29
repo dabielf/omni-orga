@@ -115,6 +115,28 @@ test('a created goal id round-trips through get, update, complete, and delete', 
   })
 })
 
+test('goal update changes kind and guards ongoing completion', async () => {
+  await useCli((cli) => {
+    const created = cli('goal', 'create', 'Ship it', '--kind', 'one-shot')
+    assert.equal(created.status, 0)
+    const goalId = created.data.id
+
+    const ongoing = cli('goal', 'update', goalId, '--kind', 'ongoing')
+    assert.equal(ongoing.status, 0)
+    assert.equal(ongoing.data.kind, 'ongoing')
+    const refused = cli('goal', 'complete', goalId)
+    assert.equal(refused.status, 1)
+    assert.equal(refused.data.error.code, 'VALIDATION_FAILED')
+
+    const back = cli('goal', 'update', goalId, '--kind', 'one-shot')
+    assert.equal(back.status, 0)
+    assert.equal(back.data.kind, 'one_shot')
+    const invalid = cli('goal', 'update', goalId, '--kind', 'recurring')
+    assert.equal(invalid.status, 1)
+    assert.equal(invalid.data.error.code, 'VALIDATION_FAILED')
+  })
+})
+
 test('a created task id round-trips through the full task verb set', async () => {
   await useCli((cli) => {
     const goal = cli('goal', 'create', 'Home', '--kind', 'ongoing').data

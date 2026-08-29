@@ -188,12 +188,14 @@ const verbs = {
       },
     ),
     update: goalVerb(
-      'omni-orga goal update <id> [--title <t>]',
-      { title: 'value' },
+      'omni-orga goal update <id> [--title <t>] [--kind <one-shot|ongoing>]',
+      { title: 'value', kind: 'value' },
       1,
       (store, positionals, flags) => {
+        const kind = flags.kind === undefined ? undefined : goalKind(flags.kind)
         return store.updateGoal(positionals[0], {
           title: flag(flags, 'title'),
+          kind,
         })
       },
     ),
