@@ -25,6 +25,33 @@ test('task URLs keep valid filters and omit defaults', () => {
   )
 })
 
+test('any well-formed goal id is accepted, not a hardcoded list', () => {
+  assert.deepEqual(sanitizeTasksSearch({ goal: 'g_ab12cd34' }), {
+    goal: 'g_ab12cd34',
+  })
+  assert.deepEqual(sanitizeTasksSearch({ goal: 'g_a-b_c' }), { goal: 'g_a-b_c' })
+  assert.deepEqual(sanitizeTasksSearch({ goal: 'no_goal' }), {})
+  assert.deepEqual(sanitizeTasksSearch({ goal: 42 }), {})
+})
+
+test('ideal date presets and history views are validated', () => {
+  assert.deepEqual(sanitizeTasksSearch({ ideal: 'week' }), { ideal: 'week' })
+  assert.deepEqual(sanitizeTasksSearch({ ideal: 'month' }), {})
+  assert.deepEqual(sanitizeTasksSearch({ view: 'completed' }), {
+    view: 'completed',
+  })
+  assert.deepEqual(sanitizeTasksSearch({ view: 'trash' }), {})
+  assert.equal(
+    tasksUrl({ goal: 'priority', ideal: 'today' }),
+    '/tasks?goal=priority&ideal=today',
+  )
+  assert.equal(tasksUrl({ view: 'archived' }), '/tasks?view=archived')
+  assert.equal(
+    recordUrl('tasks', 't_abc', { view: 'completed', available: '1' }),
+    '/tasks/t_abc?available=1&view=completed',
+  )
+})
+
 test('invalid task filters are removed without changing valid filters', () => {
   assert.deepEqual(
     sanitizeTasksSearch({ goal: 'not-a-goal', available: '1', menu: 'open' }),
