@@ -5,6 +5,7 @@ import {
 } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
+import { EmptyState } from '../components/AppShell'
 import styles from '../styles.css?url'
 
 export const Route = createRootRoute({
@@ -16,8 +17,20 @@ export const Route = createRootRoute({
       { title: 'Omni-orga' },
     ],
   }),
+  notFoundComponent: NotFoundPage,
   shellComponent: RootDocument,
 })
+
+function NotFoundPage() {
+  return (
+    <main className="minimal-page" data-omni-orga="app">
+      <EmptyState>
+        <h1>Page not found</h1>
+        <a href="/">Today</a>
+      </EmptyState>
+    </main>
+  )
+}
 
 function RootDocument({ children }: { children: ReactNode }) {
   return (

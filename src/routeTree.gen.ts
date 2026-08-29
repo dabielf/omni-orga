@@ -10,33 +10,133 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CalendarRouteImport } from './routes/calendar'
+import { Route as GoalsRouteImport } from './routes/goals'
+import { Route as StatsRouteImport } from './routes/stats'
+import { Route as TasksRouteImport } from './routes/tasks'
+import { Route as GoalsIndexRouteImport } from './routes/goals.index'
+import { Route as GoalsGoalIdRouteImport } from './routes/goals.$goalId'
+import { Route as TasksIndexRouteImport } from './routes/tasks.index'
+import { Route as TasksTaskIdRouteImport } from './routes/tasks.$taskId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CalendarRoute = CalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GoalsRoute = GoalsRouteImport.update({
+  id: '/goals',
+  path: '/goals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StatsRoute = StatsRouteImport.update({
+  id: '/stats',
+  path: '/stats',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TasksRoute = TasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GoalsIndexRoute = GoalsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => GoalsRoute,
+} as any)
+const GoalsGoalIdRoute = GoalsGoalIdRouteImport.update({
+  id: '/$goalId',
+  path: '/$goalId',
+  getParentRoute: () => GoalsRoute,
+} as any)
+const TasksIndexRoute = TasksIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => TasksRoute,
+} as any)
+const TasksTaskIdRoute = TasksTaskIdRouteImport.update({
+  id: '/$taskId',
+  path: '/$taskId',
+  getParentRoute: () => TasksRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/calendar': typeof CalendarRoute
+  '/goals': typeof GoalsRouteWithChildren
+  '/stats': typeof StatsRoute
+  '/tasks': typeof TasksRouteWithChildren
+  '/goals/$goalId': typeof GoalsGoalIdRoute
+  '/tasks/$taskId': typeof TasksTaskIdRoute
+  '/goals/': typeof GoalsIndexRoute
+  '/tasks/': typeof TasksIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/calendar': typeof CalendarRoute
+  '/stats': typeof StatsRoute
+  '/goals/$goalId': typeof GoalsGoalIdRoute
+  '/tasks/$taskId': typeof TasksTaskIdRoute
+  '/goals': typeof GoalsIndexRoute
+  '/tasks': typeof TasksIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/calendar': typeof CalendarRoute
+  '/goals': typeof GoalsRouteWithChildren
+  '/stats': typeof StatsRoute
+  '/tasks': typeof TasksRouteWithChildren
+  '/goals/$goalId': typeof GoalsGoalIdRoute
+  '/tasks/$taskId': typeof TasksTaskIdRoute
+  '/goals/': typeof GoalsIndexRoute
+  '/tasks/': typeof TasksIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/calendar'
+    | '/goals'
+    | '/stats'
+    | '/tasks'
+    | '/goals/$goalId'
+    | '/tasks/$taskId'
+    | '/goals/'
+    | '/tasks/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/calendar'
+    | '/stats'
+    | '/goals/$goalId'
+    | '/tasks/$taskId'
+    | '/goals'
+    | '/tasks'
+  id:
+    | '__root__'
+    | '/'
+    | '/calendar'
+    | '/goals'
+    | '/stats'
+    | '/tasks'
+    | '/goals/$goalId'
+    | '/tasks/$taskId'
+    | '/goals/'
+    | '/tasks/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CalendarRoute: typeof CalendarRoute
+  GoalsRoute: typeof GoalsRouteWithChildren
+  StatsRoute: typeof StatsRoute
+  TasksRoute: typeof TasksRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +148,95 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/calendar': {
+      id: '/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof CalendarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/goals': {
+      id: '/goals'
+      path: '/goals'
+      fullPath: '/goals'
+      preLoaderRoute: typeof GoalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stats': {
+      id: '/stats'
+      path: '/stats'
+      fullPath: '/stats'
+      preLoaderRoute: typeof StatsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tasks': {
+      id: '/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof TasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/goals/': {
+      id: '/goals/'
+      path: '/'
+      fullPath: '/goals/'
+      preLoaderRoute: typeof GoalsIndexRouteImport
+      parentRoute: typeof GoalsRoute
+    }
+    '/goals/$goalId': {
+      id: '/goals/$goalId'
+      path: '/$goalId'
+      fullPath: '/goals/$goalId'
+      preLoaderRoute: typeof GoalsGoalIdRouteImport
+      parentRoute: typeof GoalsRoute
+    }
+    '/tasks/': {
+      id: '/tasks/'
+      path: '/'
+      fullPath: '/tasks/'
+      preLoaderRoute: typeof TasksIndexRouteImport
+      parentRoute: typeof TasksRoute
+    }
+    '/tasks/$taskId': {
+      id: '/tasks/$taskId'
+      path: '/$taskId'
+      fullPath: '/tasks/$taskId'
+      preLoaderRoute: typeof TasksTaskIdRouteImport
+      parentRoute: typeof TasksRoute
+    }
   }
 }
 
+interface GoalsRouteChildren {
+  GoalsGoalIdRoute: typeof GoalsGoalIdRoute
+  GoalsIndexRoute: typeof GoalsIndexRoute
+}
+
+const GoalsRouteChildren: GoalsRouteChildren = {
+  GoalsGoalIdRoute: GoalsGoalIdRoute,
+  GoalsIndexRoute: GoalsIndexRoute,
+}
+
+const GoalsRouteWithChildren = GoalsRoute._addFileChildren(GoalsRouteChildren)
+
+interface TasksRouteChildren {
+  TasksTaskIdRoute: typeof TasksTaskIdRoute
+  TasksIndexRoute: typeof TasksIndexRoute
+}
+
+const TasksRouteChildren: TasksRouteChildren = {
+  TasksTaskIdRoute: TasksTaskIdRoute,
+  TasksIndexRoute: TasksIndexRoute,
+}
+
+const TasksRouteWithChildren = TasksRoute._addFileChildren(TasksRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CalendarRoute: CalendarRoute,
+  GoalsRoute: GoalsRouteWithChildren,
+  StatsRoute: StatsRoute,
+  TasksRoute: TasksRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
