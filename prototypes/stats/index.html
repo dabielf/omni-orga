@@ -161,6 +161,12 @@ main { flex: 1; min-width: 0; }
   padding: 10px 14px; font-size: 12.5px; max-width: 480px;
   font-family: ui-monospace, monospace;
 }
+.summary {
+  display: flex; align-items: flex-end; gap: 40px;
+  padding: 18px 8px 16px;
+}
+.sum-n { display: block; font-size: 30px; font-weight: 500; line-height: 1.1; }
+.sum-l { display: block; font-size: 12.5px; color: var(--text-2); margin-top: 2px; }
 @media (max-width: 900px) {
   .sidebar { display: none; }
   .content { padding: 20px 20px 120px; }
@@ -190,6 +196,7 @@ main { flex: 1; min-width: 0; }
         </div>
       </div>
       <p class="status" id="status" role="status"></p>
+      <div class="summary" id="summary"></div>
       <div id="body"></div>
     </div>
   </main>
@@ -242,8 +249,8 @@ function seedCopies(prob, weekday) {
 }
 
 const goals = {
-  selfcare: { id: 'g1', name: 'Self-care', type: 'ongoing', otherDone: 14 },
-  work:     { id: 'g2', name: 'Professional work', type: 'ongoing', otherDone: 23 },
+  selfcare: { id: 'g1', name: 'Self-care', type: 'ongoing', oneOffs: seedCopies(0.035) },
+  work:     { id: 'g2', name: 'Professional work', type: 'ongoing', oneOffs: seedCopies(0.045) },
   house:    { id: 'g3', name: 'Move house', type: 'one-shot', total: 5, done: 2 },
   driving:  { id: 'g4', name: 'Pass driving theory', type: 'one-shot', completedOn: 46, total: 1, done: 1 },
 };
@@ -291,6 +298,31 @@ function esc(s) { const d = document.createElement('div'); d.textContent = s; re
 
 /* ================= variant A: counts list ================= */
 
+function summaryStats(period) {
+  const repTotal = repeatables.reduce((s, r) => s + countIn(r, period), 0);
+  const oneOffTotal = Object.values(goals).reduce((s, g) =>
+    s + (g.oneOffs ? g.oneOffs.filter(d => d < period).length : 0), 0);
+  const achieved = Object.values(goals).filter(g =>
+    g.type === 'one-shot' && g.completedOn !== undefined && g.completedOn < period).length;
+  const worked = new Set();
+  for (const r of repeatables) if (countIn(r, period) > 0) worked.add(r.goal);
+  for (const [key, g] of Object.entries(goals)) {
+    const hits = (g.oneOffs ? g.oneOffs.filter(d => d < period).length : 0)
+      + (g.completedOn !== undefined && g.completedOn < period ? 1 : 0);
+    if (hits > 0) worked.add(key);
+  }
+  return { tasks: repTotal + oneOffTotal, achieved, worked: worked.size };
+}
+
+const summaryEl = document.getElementById('summary');
+const pl = (n, one, many) => n === 1 ? one : many;
+function renderSummary() {
+  const s = summaryStats(P.period);
+  summaryEl.innerHTML = `
+    <div class="sum"><span class="sum-n">${s.tasks}</span><span class="sum-l">${pl(s.tasks, 'task completed', 'tasks completed')}</span></div>
+    <div class="sum"><span class="sum-n">${s.achieved}</span><span class="sum-l">${pl(s.achieved, 'goal completed', 'goals completed')}</span></div>
+    <div class="sum"><span class="sum-n">${s.worked}</span><span class="sum-l">${pl(s.worked, 'goal worked on', 'goals worked on')}</span></div>`;
+}
 function renderA(el) {
   const rows = repeatables
     .map(r => ({ r, n: countIn(r, P.period) }))
@@ -378,7 +410,7 @@ function renderC(el) {
     const reps = repeatables.filter(r => r.goal === gid);
     let inner = '';
     if (g.type === 'ongoing') {
-      const allCopies = reps.reduce((s, r) => s + r.copies.length, 0) + g.otherDone;
+      const allCopies = reps.reduce((s, r) => s + r.copies.length, 0) + g.oneOffs.length;
       inner = `
         <p class="goal-sub">${allCopies} tasks and subtasks done</p>
         ${reps.length ? `<div class="rep-rows">
@@ -432,6 +464,7 @@ function renderAll() {
   document.querySelectorAll('#period-seg button').forEach(b =>
     b.setAttribute('aria-pressed', String(Number(b.dataset.period) === P.period)));
   statusEl.textContent = periodLabel(P.period) + ' · counts include every completed copy, including after a rename';
+  renderSummary();
   if (P.variant === 'A') renderA(bodyEl);
   else if (P.variant === 'B') renderB(bodyEl);
   else renderC(bodyEl);
