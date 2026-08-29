@@ -1,31 +1,44 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
 
-import { AppShell, Page } from '../components/AppShell'
-import { shellGoals } from '../components/shellData'
+import { Page } from '../components/AppShell'
+import { ArchivedGoals, GoalsTree } from '../components/GoalList'
+import { useGoalsUi } from '../components/goalsContext'
 
-export const Route = createFileRoute('/goals/')({ component: GoalsPage })
+export const Route = createFileRoute('/goals/')({ component: GoalsIndex })
 
-function GoalsPage() {
+function GoalsIndex() {
+  const { openCreate } = useGoalsUi()
+  const [showArchived, setShowArchived] = useState(false)
+
   return (
-    <AppShell>
-      <Page title="Goals">
-        <ul className="record-list">
-          {shellGoals.map((goal) => (
-            <li key={goal.id}>
-              <Link
-                className="record-row"
-                to="/goals/$goalId"
-                params={{ goalId: goal.id }}
-              >
-                <span>{goal.name}</span>
-                <span className="state-label">
-                  {goal.priority ? 'Priority' : 'Active'}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </Page>
-    </AppShell>
+    <Page title="Goals">
+      <div className="goals-topbar">
+        <div
+          className="segmented"
+          role="group"
+          aria-label="Show active or archived goals"
+        >
+          <button
+            type="button"
+            aria-pressed={!showArchived}
+            onClick={() => setShowArchived(false)}
+          >
+            Active
+          </button>
+          <button
+            type="button"
+            aria-pressed={showArchived}
+            onClick={() => setShowArchived(true)}
+          >
+            Archived
+          </button>
+        </div>
+        <button type="button" className="primary-btn" onClick={openCreate}>
+          Add goal
+        </button>
+      </div>
+      {showArchived ? <ArchivedGoals /> : <GoalsTree />}
+    </Page>
   )
 }

@@ -1156,6 +1156,113 @@ export function createDomainStore(
     })
   }
 
+  const reorderGoals = (goalId: string, afterGoalId: string | null) => {
+    const goal = getGoalRow(goalId)
+    if (afterGoalId !== null && afterGoalId === goalId) {
+      throw new DomainError(
+        'VALIDATION_FAILED',
+        'A goal cannot be placed after itself',
+      )
+    }
+    if (goal.completed_at || goal.archived_at) {
+      throw new DomainError(
+        'VALIDATION_FAILED',
+        'Only active goals can be reordered',
+      )
+    }
+    const anchor = afterGoalId === null ? null : getGoalRow(afterGoalId)
+    if (anchor) {
+      if (anchor.completed_at || anchor.archived_at) {
+        throw new DomainError(
+          'VALIDATION_FAILED',
+          'The goal to place after must be active',
+        )
+      }
+      if (anchor.parent_id !== goal.parent_id) {
+        throw new DomainError(
+          'VALIDATION_FAILED',
+          'The goal to place after must be at the same level',
+        )
+      }
+    }
+
+    return transaction(() => {
+      const active = database
+        .prepare(
+          `SELECT id FROM goals
+           WHERE parent_id IS ?
+             AND completed_at IS NULL
+             AND archived_at IS NULL
+           ORDER BY sort_order, created_at, rowid`,
+        )
+        .all(goal.parent_id) as Array<{ id: string }>
+      const others = active.map((row) => row.id).filter((id) => id !== goalId)
+      const position = anchor === null ? 0 : others.indexOf(anchor.id) + 1
+      others.splice(position, 0, goalId)
+      const update = database.prepare(
+        'UPDATE goals SET sort_order = ? WHERE id = ?',
+      )
+      others.forEach((id, index) => update.run(index, id))
+      return listGoals({ parentId: goal.parent_id })
+    })
+  }
+
+  const moveGoal = (goalId: string, parentId: string | null) => {
+    const goal = getGoalRow(goalId)
+    if (goal.completed_at || goal.archived_at) {
+      throw new DomainError(
+        'VALIDATION_FAILED',
+        'Only active goals can be moved',
+      )
+    }
+    if (parentId !== null) {
+      const parent = getGoalRow(parentId)
+      if (parent.parent_id) {
+        throw new DomainError(
+          'VALIDATION_FAILED',
+          'Goals can only have two levels',
+        )
+      }
+      if (parent.completed_at || parent.archived_at) {
+        throw new DomainError(
+          'VALIDATION_FAILED',
+          'A goal cannot be moved under an inactive goal',
+        )
+      }
+      if (parent.kind === 'one_shot' && goal.kind === 'ongoing') {
+        throw new DomainError(
+          'VALIDATION_FAILED',
+          'A one-shot goal can only contain one-shot subgoals',
+        )
+      }
+      if (
+        database
+          .prepare('SELECT 1 FROM goals WHERE parent_id = ? LIMIT 1')
+          .get(goalId)
+      ) {
+        throw new DomainError(
+          'VALIDATION_FAILED',
+          'A goal with subgoals cannot become a subgoal',
+        )
+      }
+    }
+
+    return transaction(() => {
+      const sortOrder = Number(
+        database
+          .prepare(
+            `SELECT COALESCE(MAX(sort_order), -1) + 1 AS next
+             FROM goals WHERE parent_id IS ?`,
+          )
+          .get(parentId)?.next,
+      )
+      database
+        .prepare('UPDATE goals SET parent_id = ?, sort_order = ? WHERE id = ?')
+        .run(parentId, sortOrder, goalId)
+      return getGoal(goalId)
+    })
+  }
+
   const setTaskTreeArchived = (
     taskId: string,
     archivedAt: string | null,
@@ -1616,7 +1723,9 @@ export function createDomainStore(
     listGoals,
     listTaskHistory,
     listTasks,
+    moveGoal,
     planTask,
+    reorderGoals,
     reorderToday,
     reopenGoal,
     restoreGoal,
