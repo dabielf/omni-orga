@@ -14,7 +14,9 @@ export type DomainStore = {
   getPreviousCompletion(taskId: string): string | null
   listGoals(input: { includeArchived?: boolean }): Goal[]
   listTasks(input: { includeArchived?: boolean }): Task[]
+  getToday(day?: string): { open: Task[]; completed: Task[] }
   planTask(taskId: string, value: string, today?: string): unknown
+  reorderToday(taskId: string, afterTaskId: string | null): unknown
   restoreTask(taskId: string): unknown
   setTaskDeadline(taskId: string, value: string | null): unknown
   setTaskGoalLinks(taskId: string, goalIds: string[]): unknown
@@ -89,6 +91,57 @@ export async function withStore(
     const store = await getServerStore()
     await run(store)
     return { ok: true, ...(await snapshot()) }
+  } catch (error) {
+    const domainError = error as DomainError
+    if (domainError instanceof DomainError) {
+      return {
+        ok: false,
+        code: domainError.code,
+        message: domainError.message,
+      }
+    }
+    return {
+      ok: false,
+      code: 'UNKNOWN',
+      message: 'The change was not saved.',
+    }
+  }
+}
+
+export type TodayData = {
+  today: string
+  goals: Goal[]
+  open: Task[]
+  completed: Task[]
+}
+
+export type TodayActionResult =
+  | ({ ok: true } & TodayData)
+  | { ok: false; code: string; message: string }
+
+/** The Today answer of the store: active goals plus today's open and completed tasks. */
+export async function todaySnapshot(): Promise<TodayData> {
+  const store = await getServerStore()
+  const today = localDay()
+  const { open, completed } = store.getToday(today)
+  return {
+    today,
+    goals: store
+      .listGoals({})
+      .filter((goal) => !goal.completedAt && !goal.archivedAt),
+    open,
+    completed,
+  }
+}
+
+/** Runs a domain change and answers with a fresh Today snapshot or a factual error. */
+export async function withTodayStore(
+  run: (store: DomainStore) => unknown | Promise<unknown>,
+): Promise<TodayActionResult> {
+  try {
+    const store = await getServerStore()
+    await run(store)
+    return { ok: true, ...(await todaySnapshot()) }
   } catch (error) {
     const domainError = error as DomainError
     if (domainError instanceof DomainError) {
