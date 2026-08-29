@@ -124,7 +124,7 @@ test('start, status, logs, already running, and stop share one owned server', as
         .prepare('SELECT name FROM schema_migrations ORDER BY name')
         .all()
         .map(({ name }) => name),
-      ['001_foundation.sql'],
+      ['001_foundation.sql', '002_domain.sql'],
     )
     database.close()
 
@@ -241,7 +241,7 @@ test('dev stays in the foreground and uses the same database rules', async () =>
     const database = openDatabase(databasePath)
     assert.equal(
       database.prepare('SELECT count(*) AS count FROM schema_migrations').get().count,
-      1,
+      2,
     )
     database.close()
 
