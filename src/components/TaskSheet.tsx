@@ -839,7 +839,7 @@ function TaskSheetBody({
             Archive
           </button>
         ) : null}
-        <button type="button" className="plain-action" onClick={onClose}>
+        <button type="button" className="secondary-btn" onClick={onClose}>
           Close
         </button>
       </div>

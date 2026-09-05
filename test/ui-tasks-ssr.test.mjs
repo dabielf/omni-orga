@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { mkdtemp } from 'node:fs/promises'
+import { mkdtemp, readFile } from 'node:fs/promises'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -227,6 +227,14 @@ test('the sheet renders the task and its subtask tree server-side', async () => 
   // Canonical URL keeps filter search params.
   const filtered = await render(`/tasks/${fixture.paint.id}?available=1`)
   assert.match(filtered, /value="Paint the walls"/)
+})
+
+test('unplanned detail Schedule is not subject to the row-only hiding rule', async () => {
+  const html = await render(`/tasks/${fixture.tax.id}`)
+  assert.match(html, /class="sheet-plan"[^]*?<summary[^>]*>Schedule<\/summary>/)
+  const css = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8')
+  // The original global selector also hid Schedule outside task rows.
+  assert.doesNotMatch(css, /(?:^|\})\s*\.when-chip-add\s*\{[^}]*visibility:\s*hidden/m)
 })
 
 test('unknown tasks keep the factual not-found state', async () => {
