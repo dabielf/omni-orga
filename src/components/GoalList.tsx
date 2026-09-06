@@ -70,7 +70,7 @@ export function GoalProgressView({
 }) {
   if (!progress) return null
   const text = progress.kind === 'ongoing'
-    ? `${progress.completed} ${wide ? 'tasks and subtasks done in total.' : 'tasks done'}`
+    ? `${progress.completed} ${wide ? 'tasks and subtasks done in total.' : progress.completed === 1 ? 'task done' : 'tasks done'}`
     : progress.total ? `${progress.completed} of ${progress.total} tasks done${wide ? `. ${progress.percentage}% in total.` : ''}` : 'No tasks yet'
   if (progress.kind === 'one_shot' && progress.total) {
     return (
