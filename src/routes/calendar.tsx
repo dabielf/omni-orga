@@ -1,6 +1,7 @@
 import { loadFreshData } from '../lib/loadFreshData'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
+import { Notice } from '../components/Notice'
 
 import { AppShell, Page } from '../components/AppShell'
 import { CalendarPage } from '../components/CalendarPage'
@@ -23,13 +24,8 @@ function CalendarRoute() {
   const search = Route.useSearch()
   useCanonicalUrl(calendarUrl(search))
   const [notice, setNotice] = useState<string | null>(null)
-  const noticeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
-    undefined,
-  )
   const notify = (message: string) => {
     setNotice(message)
-    clearTimeout(noticeTimer.current)
-    noticeTimer.current = setTimeout(() => setNotice(null), 6000)
   }
 
   const apply = (result: TasksActionResult) => {
@@ -45,9 +41,7 @@ function CalendarRoute() {
       <Page title="Calendar">
         <CalendarPage data={data} apply={apply} selectedDate={search.date} />
         {notice ? (
-          <div className="notice-chip" role="status">
-            <span>{notice}</span>
-          </div>
+          <Notice message={notice} onDismiss={() => setNotice(null)} />
         ) : null}
       </Page>
     </AppShell>

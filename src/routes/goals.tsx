@@ -1,6 +1,7 @@
 import { loadFreshData } from '../lib/loadFreshData'
 import { Outlet, createFileRoute, useRouter } from '@tanstack/react-router'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
+import { Notice } from '../components/Notice'
 
 import { AppShell } from '../components/AppShell'
 import { GoalSheet } from '../components/GoalSheet'
@@ -23,9 +24,6 @@ function GoalsLayout() {
     actionLabel?: string
     undo?: () => void
   } | null>(null)
-  const noticeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
-    undefined,
-  )
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [createOpen, setCreateOpen] = useState(false)
 
@@ -34,8 +32,6 @@ function GoalsLayout() {
     options?: { actionLabel?: string; undo?: () => void },
   ) => {
     setNotice({ message, actionLabel: options?.actionLabel, undo: options?.undo })
-    clearTimeout(noticeTimer.current)
-    noticeTimer.current = setTimeout(() => setNotice(null), 6000)
   }
 
   const toggleCollapsed = (goalId: string) => {
@@ -64,8 +60,7 @@ function GoalsLayout() {
           <GoalSheet onClose={() => setCreateOpen(false)} />
         ) : null}
         {notice ? (
-          <div className="notice-chip" role="status">
-            <span>{notice.message}</span>
+          <Notice message={notice.message} onDismiss={() => setNotice(null)}>
             {notice.undo ? (
               <button
                 type="button"
@@ -78,7 +73,7 @@ function GoalsLayout() {
                 {notice.actionLabel ?? 'Undo'}
               </button>
             ) : null}
-          </div>
+          </Notice>
         ) : null}
       </AppShell>
     </GoalsUiContext.Provider>

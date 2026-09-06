@@ -6,7 +6,7 @@ import {
 } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
-import { EmptyState } from '../components/AppShell'
+import { AppShell, EmptyState, Page } from '../components/AppShell'
 import type { ViewContext } from '../lib/loadFreshData'
 import styles from '../styles.css?url'
 
@@ -21,16 +21,22 @@ export const Route = createRootRouteWithContext<ViewContext>()({
   }),
   notFoundComponent: NotFoundPage,
   errorComponent: LoadErrorPage,
+  pendingComponent: LoadingPage,
+  pendingMs: 200,
   shellComponent: RootDocument,
 })
+
+function LoadingPage() {
+  return <AppShell><p role="status">Loading…</p></AppShell>
+}
 
 function LoadErrorPage() {
   const router = useRouter()
   return (
-    <main className="minimal-page" data-omni-orga="app">
-      <p role="alert">Could not load current data. Check your connection and try again.</p>
-      <button type="button" onClick={() => void router.invalidate()}>Try again</button>
-    </main>
+    <AppShell><Page title="Could not load">
+      <p role="alert">Check your connection and try again.</p>
+      <button type="button" className="primary-btn" onClick={() => void router.invalidate()}>Try again</button>
+    </Page></AppShell>
   )
 }
 
