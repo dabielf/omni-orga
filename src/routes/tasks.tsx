@@ -1,13 +1,14 @@
 import { loadFreshData } from '../lib/loadFreshData'
-import { Outlet, createFileRoute, useRouter } from '@tanstack/react-router'
+import { Link, Outlet, createFileRoute, useRouter } from '@tanstack/react-router'
 import { useRef, useState } from 'react'
 
-import { AppShell, Page } from '../components/AppShell'
+import { AppShell } from '../components/AppShell'
 import { CreateSheet } from '../components/TaskSheet'
 import { TasksFilters } from '../components/TasksFilters'
 import { TasksRail } from '../components/TasksRail'
 import { TasksUiContext, type TasksUi } from '../components/tasksContext'
 import { loadTasksData } from '../domain/server'
+import { tasksHeading } from '../lib/tasksView'
 import { sanitizeTasksSearch } from '../lib/urlState'
 
 export const Route = createFileRoute('/tasks')({
@@ -67,11 +68,16 @@ function TasksLayout() {
   return (
     <TasksUiContext.Provider value={ui}>
       <AppShell>
-        <Page title="Tasks">
-          <div className="tasks-layout">
-            <TasksRail />
+        <div className="page tasks-page">
+          <div className="tasks-heading">
+            <h1>Tasks</h1>
+            {!search.view ? <button type="button" className="primary-btn" onClick={ui.openCreate}>New task</button> : null}
+          </div>
+          <div className={search.view ? 'tasks-history-layout' : 'tasks-layout'}>
+            {!search.view ? <TasksRail /> : null}
             <div className="task-content">
               {!search.view ? <TasksFilters /> : null}
+              {search.view ? <nav className="task-history-nav" aria-label="Task history"><Link className="secondary-btn" to="/tasks" search={{ available: search.available, ideal: search.ideal }}>All tasks</Link><span className="primary-btn" aria-current="page">{tasksHeading(data.goals, search)}</span></nav> : <h2 className="task-view-heading">{tasksHeading(data.goals, search)}</h2>}
               <Outlet />
             </div>
           </div>
@@ -95,7 +101,7 @@ function TasksLayout() {
               ) : null}
             </div>
           ) : null}
-        </Page>
+        </div>
       </AppShell>
     </TasksUiContext.Provider>
   )

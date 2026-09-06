@@ -1,5 +1,5 @@
 import { Link, useRouter } from '@tanstack/react-router'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import {
   completeTodayTaskAction,
@@ -20,10 +20,17 @@ export function TodayPage({ initial: data }: { initial: TodayData }) {
   const [notice, setNotice] = useState<string | null>(null)
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const openListRef = useRef<HTMLUListElement>(null)
+  const cancelDrag = useRef<(() => void) | null>(null)
+  const pending = useRef(new Set<string>())
+  const [saving, setSaving] = useState(false)
+  useEffect(() => () => {
+    cancelDrag.current?.()
+    if (noticeTimer.current) clearTimeout(noticeTimer.current)
+  }, [])
 
-  const apply = (result: TodayActionResult) => {
+  const apply = async (result: TodayActionResult) => {
     if (result.ok) {
-      void router.invalidate()
+      await router.invalidate().catch(() => setNotice('Could not refresh. Try again.'))
       return
     }
     // Success is the state change itself; only failures say anything.
@@ -32,15 +39,16 @@ export function TodayPage({ initial: data }: { initial: TodayData }) {
     noticeTimer.current = setTimeout(() => setNotice(null), 6000)
   }
 
-  const complete = (task: Task) => {
-    void completeTodayTaskAction({ data: { taskId: task.id } }).then(apply)
+  const run = async (key: string, action: () => Promise<TodayActionResult>) => {
+    if (pending.current.has(key)) return
+    pending.current.add(key)
+    setSaving(true)
+    try { await apply(await action()) }
+    catch { await apply({ ok: false, code: 'network', message: 'Could not save the change. Try again.' }) }
+    finally { pending.current.delete(key); setSaving(pending.current.size > 0) }
   }
-
-  const undoCompletion = (task: Task) => {
-    void undoTodayTaskCompletionAction({ data: { taskId: task.id } }).then(
-      apply,
-    )
-  }
+  const complete = (task: Task) => { void run(task.id, () => completeTodayTaskAction({ data: { taskId: task.id } })) }
+  const undoCompletion = (task: Task) => { void run(task.id, () => undoTodayTaskCompletionAction({ data: { taskId: task.id } })) }
 
   const empty = !data.open.length && !data.completed.length
 
@@ -50,28 +58,25 @@ export function TodayPage({ initial: data }: { initial: TodayData }) {
         <div className="today-heading">
           <h1>Today</h1>
           <p className="today-day">{longDay(data.today)}</p>
-          <p className="today-counts">
-            {data.open.length} open · {data.completed.length} complete
-          </p>
         </div>
 
         {empty ? (
           <div className="empty-state">
             <p>Nothing planned for today</p>
-            <Link className="plain-action" to="/tasks">
+            <Link className="primary-btn" to="/tasks">
               Open Tasks
             </Link>
           </div>
         ) : (
-          <>
-            <Coverage data={data} />
-
+          <div className="today-layout">
+            <div className="today-work" aria-busy={saving}>
             <section className="section" aria-label="Open tasks">
+              <p className="today-counts">{data.open.length ? `${data.open.length} open` : 'No open tasks.'}</p>
               {data.open.length ? (
                 <ul
                   className="task-list today-open"
                   ref={openListRef}
-                  onPointerDown={onListPointerDown(persistOrder)}
+                  onPointerDown={(event) => { if (!pending.current.size) { cancelDrag.current?.(); cancelDrag.current = onListPointerDown(persistOrder)(event) ?? null } }}
                 >
                   {data.open.map((task) => (
                     <TodayRow
@@ -82,9 +87,7 @@ export function TodayPage({ initial: data }: { initial: TodayData }) {
                     />
                   ))}
                 </ul>
-              ) : (
-                <TaskRows tasks={[]} data={data} emptyText="No open tasks." onToggle={complete} />
-              )}
+              ) : null}
               {data.open.length > 1 ? (
                 <p className="today-hold">Long press, then drag to reorder.</p>
               ) : null}
@@ -99,7 +102,9 @@ export function TodayPage({ initial: data }: { initial: TodayData }) {
                 onToggle={undoCompletion}
               />
             </section>
-          </>
+            </div>
+            <Coverage data={data} />
+          </div>
         )}
       </div>
       {notice ? (
@@ -110,29 +115,13 @@ export function TodayPage({ initial: data }: { initial: TodayData }) {
     </AppShell>
   )
 
-  /** Sends the dropped position unless the order did not change. */
-  function persistOrder(row: HTMLElement) {
-    const list = openListRef.current
-    if (!list) return
-    const taskId = row.dataset.taskId
-    if (!taskId) return
-    const ids = Array.from(
-      list.querySelectorAll('li[data-task-id]'),
-      (item) =>
-        (item instanceof HTMLElement ? item.dataset.taskId : null) ?? '',
-    )
-    const current = data.open.map((task) => task.id)
-    if (
-      current.length === ids.length &&
-      current.every((id, index) => id === ids[index])
-    ) {
-      return
-    }
+  /** The drag preview is restored before a save; only confirmed data changes the list. */
+  function persistOrder(taskId: string, ids: string[]) {
+    const current = data.open.map(task => task.id)
+    if (current.every((id, index) => id === ids[index])) return
     const index = ids.indexOf(taskId)
     if (index < 0) return
-    void reorderTodayAction({
-      data: { taskId, afterTaskId: index > 0 ? ids[index - 1] : null },
-    }).then(apply)
+    void run('reorder', () => reorderTodayAction({ data: { taskId, afterTaskId: index > 0 ? ids[index - 1] : null } }))
   }
 }
 
@@ -140,7 +129,7 @@ export function TodayPage({ initial: data }: { initial: TodayData }) {
  * Long-press drag on open rows: hold past the threshold, follow the pointer
  * by moving the row in the list, then persist the dropped position.
  */
-function onListPointerDown(persistOrder: (row: HTMLElement) => void) {
+function onListPointerDown(persistOrder: (taskId: string, ids: string[]) => void) {
   return (event: React.PointerEvent<HTMLUListElement>) => {
     if (event.pointerType === 'mouse' && event.button !== 0) return
     const target = event.target as HTMLElement
@@ -149,9 +138,11 @@ function onListPointerDown(persistOrder: (row: HTMLElement) => void) {
     const row = target.closest('li[data-task-id]')
     if (!(row instanceof HTMLElement) || !list.contains(row)) return
 
+    const original = Array.from(list.children)
     const dragRow: HTMLElement = row
     const { pointerId, clientX: startX, clientY: startY } = event
     let held = false
+    let finished = false
     const timer = setTimeout(() => {
       held = true
       dragRow.classList.add('is-held')
@@ -185,12 +176,18 @@ function onListPointerDown(persistOrder: (row: HTMLElement) => void) {
     }
 
     function finish(commit: boolean) {
+      if (finished) return
+      finished = true
       clearTimeout(timer)
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
       window.removeEventListener('pointercancel', cancel)
+      window.removeEventListener('keydown', escape)
+      window.removeEventListener('blur', blur)
       dragRow.classList.remove('is-held')
-      if (held && commit) persistOrder(dragRow)
+      const ids = Array.from(list.children, child => (child as HTMLElement).dataset.taskId ?? '')
+      for (const child of original) if (child.parentElement === list) list.append(child)
+      if (held && commit && dragRow.dataset.taskId) persistOrder(dragRow.dataset.taskId, ids)
     }
     const up = (upEvent: PointerEvent) => {
       if (upEvent.pointerId === pointerId) finish(true)
@@ -199,9 +196,14 @@ function onListPointerDown(persistOrder: (row: HTMLElement) => void) {
       if (cancelEvent.pointerId === pointerId) finish(false)
     }
 
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') finish(false) }
+    const blur = () => finish(false)
+    window.addEventListener('keydown', escape)
+    window.addEventListener('blur', blur)
     window.addEventListener('pointermove', move, { passive: false })
     window.addEventListener('pointerup', up)
     window.addEventListener('pointercancel', cancel)
+    return () => finish(false)
   }
 }
 
@@ -254,17 +256,7 @@ function TaskRows({
   onToggle: (task: Task) => void
 }) {
   if (!tasks.length) {
-    return (
-      <ul className="task-list">
-        <li>
-          <div className="task-row">
-            <span className="task-copy">
-              <span className="today-none">{emptyText}</span>
-            </span>
-          </div>
-        </li>
-      </ul>
-    )
+    return <p className="today-none">{emptyText}</p>
   }
   return (
     <ul className="task-list">
