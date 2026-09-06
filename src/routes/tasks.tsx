@@ -1,16 +1,17 @@
 import { loadFreshData } from '../lib/loadFreshData'
 import { Link, Outlet, createFileRoute, useRouter } from '@tanstack/react-router'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { AppShell } from '../components/AppShell'
 import { Notice } from '../components/Notice'
 import { CreateSheet } from '../components/TaskSheet'
+import { TasksList } from '../components/TaskList'
 import { TasksFilters } from '../components/TasksFilters'
 import { TasksRail } from '../components/TasksRail'
 import { TasksUiContext, type TasksUi } from '../components/tasksContext'
 import { loadTasksData } from '../domain/server'
 import { tasksHeading } from '../lib/tasksView'
-import { sanitizeTasksSearch } from '../lib/urlState'
+import { sanitizeTasksSearch, tasksUrl } from '../lib/urlState'
 
 export const Route = createFileRoute('/tasks')({
   validateSearch: sanitizeTasksSearch,
@@ -25,6 +26,23 @@ function TasksLayout() {
     void router.invalidate()
   }
   const search = Route.useSearch()
+  useEffect(() => {
+    let position: { x: number; y: number } | undefined
+    const before = router.subscribe('onBeforeNavigate', ({ fromLocation, toLocation }) => {
+      const from = fromLocation?.pathname
+      const to = toLocation.pathname
+      const taskPath = (path: string | undefined) => path === '/tasks' || path?.startsWith('/tasks/')
+      // History navigation does not retain a Link's resetScroll option.
+      position = taskPath(from) && taskPath(to) && from !== to &&
+        tasksUrl(fromLocation?.search) === tasksUrl(toLocation.search)
+        ? { x: window.scrollX, y: window.scrollY } : undefined
+    })
+    const rendered = router.subscribe('onRendered', () => {
+      if (position) window.scrollTo(position.x, position.y)
+      position = undefined
+    })
+    return () => { before(); rendered() }
+  }, [router])
   const [notice, setNotice] = useState<{
     id: number
     message: string
@@ -78,6 +96,7 @@ function TasksLayout() {
             <div className="task-content">
               {!search.view ? <TasksFilters /> : null}
               {search.view ? <nav className="task-history-nav" aria-label="Task history"><Link className="secondary-btn" to="/tasks" search={{ available: search.available, ideal: search.ideal }}>All tasks</Link><span className="primary-btn" aria-current="page">{tasksHeading(data.goals, search)}</span></nav> : <h2 className="task-view-heading">{tasksHeading(data.goals, search)}</h2>}
+              <TasksList />
               <Outlet />
             </div>
           </div>

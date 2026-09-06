@@ -18,7 +18,7 @@ function TaskPage() {
   return (
     <TaskSheet
       taskId={taskId}
-      onClose={() => navigate({ to: '/tasks', search })}
+      onClose={() => navigate({ to: '/tasks', search, resetScroll: false })}
     />
   )
 }

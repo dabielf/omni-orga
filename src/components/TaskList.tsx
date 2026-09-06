@@ -45,7 +45,7 @@ function MetaBits({
     }
     if (goalSource.goalIds.length > 1) {
       bits.push(
-        <Link key="more" className="goal-chip-more" to="/tasks/$taskId" params={{ taskId: task.id }} search={search} aria-label={`Show all goals for ${task.title}`}>
+        <Link key="more" className="goal-chip-more" to="/tasks/$taskId" params={{ taskId: task.id }} search={search} resetScroll={false} aria-label={`Show all goals for ${task.title}`}>
           +{goalSource.goalIds.length - 1}
         </Link>,
       )
@@ -100,6 +100,7 @@ function TaskTitleLink({ task, search }: { task: Task; search: TasksSearch }) {
       to="/tasks/$taskId"
       params={{ taskId: task.id }}
       search={search}
+      resetScroll={false}
     >
       {task.title}
     </Link>
