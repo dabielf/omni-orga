@@ -314,7 +314,7 @@ function GoalRow({ goal, drag, isLastSibling, onOpenMove, onArchive }: {
         </div></details>
       </div> : null}
     </div>
-    {subs.length && !isCollapsed ? <ul className="goal-subgoals">{subs.map((sub,index) => <GoalRow key={sub.id} goal={sub} drag={drag} isLastSibling={index === subs.length-1} onOpenMove={onOpenMove} onArchive={onArchive} />)}</ul> : null}
+    {subs.length && !isCollapsed ? <ul className="goal-subgoals">{subs.map(sub => <GoalRow key={sub.id} goal={sub} drag={drag} isLastSibling={sub.id === subs.filter(item => !item.completedAt).at(-1)?.id} onOpenMove={onOpenMove} onArchive={onArchive} />)}</ul> : null}
   </li>
 }
 
@@ -348,12 +348,12 @@ export function GoalsTree() {
           }
         }}
       >
-        {tops.map((goal, index) => (
+        {tops.map((goal) => (
           <GoalRow
             key={goal.id}
             goal={goal}
             drag={drag}
-            isLastSibling={index === tops.length - 1}
+            isLastSibling={goal.id === tops.filter(item => !item.completedAt).at(-1)?.id}
             onOpenMove={setMove}
             onArchive={setArchiveId}
           />
