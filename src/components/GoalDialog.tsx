@@ -16,6 +16,7 @@ export function GoalDialog({ title, onClose, children, compact = false }: {
     const trigger = document.activeElement as HTMLElement | null
     const dialog = ref.current!
     dialog.showModal()
+    dialog.querySelector<HTMLInputElement>('input')?.focus()
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Tab') {
         const items = Array.from(dialog.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]')).filter(item => item.getClientRects().length)
