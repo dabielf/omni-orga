@@ -1,0 +1,180 @@
+import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { createServer } from 'node:net'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { after, before, test } from 'node:test'
+import { chromium } from 'playwright'
+
+const directory = await mkdtemp(join(tmpdir(), 'omni-freshness-'))
+const socket = createServer()
+await new Promise(resolve => socket.listen(0, '127.0.0.1', resolve))
+const port = socket.address().port
+await new Promise(resolve => socket.close(resolve))
+const url = `http://127.0.0.1:${port}`
+const env = { ...process.env, OMNI_ORGA_TEST: '1', OMNI_ORGA_PORT: String(port),
+  OMNI_ORGA_DATABASE_PATH: join(directory, 'db.sqlite'),
+  OMNI_ORGA_RUNTIME_DIR: join(directory, 'runtime') }
+const lifecycle = command => spawnSync(process.execPath, ['scripts/lifecycle.mjs', command], { env, encoding: 'utf8', timeout: 30000 })
+let browser
+let page
+before(async () => {
+  const result = lifecycle('start')
+  assert.equal(result.status, 0, result.stderr)
+  // Install once with: pnpm exec playwright install chromium
+  browser = await chromium.launch({ headless: true })
+  page = await browser.newPage()
+  page.setDefaultTimeout(5000)
+})
+after(async () => {
+  await browser?.close()
+  const result = lifecycle('stop')
+  assert.equal(result.status, 0, result.stderr)
+  await rm(directory, { recursive: true, force: true })
+})
+const nav = label => page.locator('.global-links-plain').getByRole('link', { name: label, exact: true }).click()
+async function visible(locator) { await locator.waitFor({ state: 'visible', timeout: 5000 }) }
+
+test('task sheets retain failed edits, validate links, and keep close available', async () => {
+  await page.goto(`${url}/tasks`)
+  await page.getByRole('button', { name: 'New task', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'New task', exact: true })
+  await dialog.getByRole('button', { name: 'Create task', exact: true }).click()
+  await visible(dialog.getByText('Enter a task name.', { exact: true }))
+  await dialog.getByRole('textbox', { name: 'Task name', exact: true }).fill('Draft to recover')
+  await dialog.getByRole('button', { name: '› More options' }).click()
+  await dialog.getByPlaceholder('Add a URL, one at a time').fill('not a URL')
+  await dialog.getByRole('button', { name: 'Add', exact: true }).click()
+  await visible(dialog.getByText('Enter a full http or https URL.', { exact: true }))
+  assert.equal(await dialog.getByPlaceholder('Add a URL, one at a time').inputValue(), 'not a URL')
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'New task', exact: true }).click()
+  assert.equal(await dialog.getByRole('textbox', { name: 'Task name', exact: true }).inputValue(), 'Draft to recover')
+  await dialog.getByRole('button', { name: 'Create task', exact: true }).click()
+  await visible(page.getByRole('link', { name: 'Draft to recover', exact: true }))
+  await page.getByRole('link', { name: 'Draft to recover', exact: true }).click()
+  const task = page.getByRole('dialog', { name: 'Task', exact: true })
+  await task.getByRole('button', { name: '› More options' }).click()
+  let fail = true
+  await page.route('**/*', route => route.request().method() === 'POST' && fail ? route.abort('failed') : route.continue())
+  await task.getByRole('textbox', { name: 'Task name', exact: true }).fill('Recovered title')
+  await task.getByRole('textbox', { name: 'Notes', exact: true }).fill('Recovered notes')
+  await visible(task.getByRole('button', { name: 'Retry', exact: true }))
+  await task.getByRole('button', { name: 'Close', exact: true }).first().click()
+  await page.getByRole('link', { name: 'Draft to recover', exact: true }).click()
+  assert.equal(await task.getByRole('textbox', { name: 'Task name', exact: true }).inputValue(), 'Recovered title')
+  await task.getByRole('button', { name: '› More options' }).click()
+  assert.equal(await task.getByRole('textbox', { name: 'Notes', exact: true }).inputValue(), 'Recovered notes')
+  fail = false
+  await task.getByRole('button', { name: 'Retry', exact: true }).click()
+  await visible(task.getByText('Saved', { exact: true }))
+  await task.getByRole('button', { name: 'Close', exact: true }).first().click()
+  await page.reload()
+  await page.getByRole('link', { name: 'Recovered title', exact: true }).click()
+  await task.getByRole('button', { name: '› More options' }).click()
+  assert.equal(await task.getByRole('textbox', { name: 'Notes', exact: true }).inputValue(), 'Recovered notes')
+  await page.mouse.click(10, 10)
+  assert.equal(await task.isVisible(), false)
+  await page.getByRole('button', { name: 'New task', exact: true }).click()
+  await page.getByRole('textbox', { name: 'Task name', exact: true }).fill('Discard this draft')
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await page.getByRole('button', { name: 'New task', exact: true }).click()
+  assert.equal(await page.getByRole('textbox', { name: 'Task name', exact: true }).inputValue(), '')
+  await page.keyboard.press('Escape')
+})
+
+
+test('nested task controls warn before deletion and archived sheets stay read-only', async () => {
+  await page.goto(`${url}/tasks`)
+  await page.getByRole('button', { name: 'New task', exact: true }).click()
+  await page.getByRole('textbox', { name: 'Task name', exact: true }).fill('Parent task')
+  await page.getByRole('button', { name: 'Create task', exact: true }).click()
+  await page.getByRole('link', { name: 'Parent task', exact: true }).click()
+  const task = page.getByRole('dialog', { name: 'Task', exact: true })
+  await task.getByRole('button', { name: '+ Add subtask', exact: true }).click()
+  await task.getByRole('textbox', { name: 'New subtask name' }).fill('First child')
+  await page.keyboard.press('Enter')
+  await visible(task.getByRole('button', { name: 'Add a subtask under First child', exact: true }))
+  await task.getByRole('button', { name: 'Add a subtask under First child', exact: true }).click()
+  await task.getByRole('textbox', { name: 'New subtask name' }).fill('Grandchild')
+  await page.keyboard.press('Escape')
+  assert.equal(await task.isVisible(), true)
+  assert.equal(await task.getByRole('textbox', { name: 'New subtask name' }).count(), 0)
+  await task.getByRole('button', { name: 'Add a subtask under First child', exact: true }).click()
+  await task.getByRole('textbox', { name: 'New subtask name' }).fill('Grandchild')
+  await page.keyboard.press('Enter')
+  await visible(task.getByRole('button', { name: 'Delete Grandchild', exact: true }))
+  assert.equal(await task.getByRole('button', { name: 'First child is blocked by subtasks', exact: true }).isDisabled(), true)
+  await task.getByRole('button', { name: 'Delete First child', exact: true }).click()
+  await visible(task.getByText('Delete First child?', { exact: true }))
+  await task.getByRole('button', { name: 'Cancel', exact: true }).click()
+  assert.equal(await task.getByRole('button', { name: 'Delete Grandchild', exact: true }).isVisible(), true)
+  await task.getByRole('button', { name: 'Delete First child', exact: true }).click()
+  await task.getByRole('button', { name: 'Delete task', exact: true }).click()
+  await task.getByRole('button', { name: 'Delete Grandchild', exact: true }).waitFor({ state: 'detached' })
+  await task.getByRole('button', { name: '+ Add subtask', exact: true }).click()
+  await task.getByRole('textbox', { name: 'New subtask name' }).fill('Archive child')
+  await page.keyboard.press('Enter')
+  await visible(task.getByRole('button', { name: 'Delete Archive child', exact: true }))
+  await task.getByRole('button', { name: 'Archive', exact: true }).click()
+  await visible(task.getByRole('button', { name: 'Restore', exact: true }))
+  assert.equal(await task.getByRole('button', { name: '+ Add subtask', exact: true }).count(), 0)
+  assert.equal(await task.getByRole('button', { name: 'Complete Archive child', exact: true }).count(), 0)
+  assert.equal(await task.getByRole('textbox', { name: 'Subtask name', exact: true }).getAttribute('readonly'), '')
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'New task', exact: true }).click()
+  for (let i = 0; i < 12; i++) {
+    await page.keyboard.press('Tab')
+    assert.equal(await page.evaluate(() => Boolean(document.activeElement?.closest('dialog[open]'))), true)
+  }
+  await page.keyboard.press('Escape')
+  assert.equal(await page.getByRole('button', { name: 'New task', exact: true }).evaluate(el => el === document.activeElement), true)
+})
+
+test('task dates constrain planning and sheets fit both viewport sizes', async () => {
+  await page.goto(`${url}/tasks`)
+  await page.getByRole('button', { name: 'New task', exact: true }).click()
+  let task = page.getByRole('dialog', { name: 'New task', exact: true })
+  await task.getByRole('textbox', { name: 'Task name', exact: true }).fill('Draft the project outline')
+  if (process.env.OMNI_FORMS_SCREENSHOTS) {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.screenshot({ path: '/tmp/forms-new-desktop.png' })
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.screenshot({ path: '/tmp/forms-new-phone.png' })
+  }
+  await task.getByRole('button', { name: '› More options' }).click()
+  const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10)
+  await task.getByLabel('Deadline', { exact: true }).fill(today)
+  await task.getByRole('textbox', { name: 'Notes', exact: true }).fill('Some working notes that stay with this task.')
+  await task.getByRole('button', { name: 'Create task', exact: true }).click()
+  await page.getByRole('link', { name: 'Draft the project outline', exact: true }).click()
+  task = page.getByRole('dialog', { name: 'Task', exact: true })
+  await task.locator('summary').filter({ hasText: 'Schedule' }).click()
+  assert.equal(await task.getByRole('button', { name: 'Tomorrow', exact: true }).isDisabled(), true)
+  assert.equal(await task.getByLabel('Pick a date', { exact: true }).getAttribute('max'), today)
+  await page.keyboard.press('Escape')
+  assert.equal(await task.isVisible(), true)
+  await task.getByRole('button', { name: '+ Add subtask', exact: true }).click()
+  await task.getByRole('textbox', { name: 'New subtask name' }).fill('Read through the source material')
+  await page.keyboard.press('Enter')
+  await visible(task.getByRole('button', { name: 'Delete Read through the source material', exact: true }))
+  await task.locator('summary').filter({ hasText: 'Schedule' }).click()
+  assert.equal(await task.getByRole('button', { name: 'Today', exact: true }).isDisabled(), true)
+  await page.keyboard.press('Escape')
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 844 })
+    const bounds = await task.locator('.task-sheet').boundingBox()
+    assert.equal(Math.round(bounds.width), width === 390 ? 390 : 560)
+    assert.ok(await task.locator('.task-sheet').evaluate(el => el.scrollWidth <= el.clientWidth))
+    if (process.env.OMNI_FORMS_SCREENSHOTS) await page.screenshot({ path: `/tmp/forms-detail-${width}.png` })
+  }
+  await task.getByRole('button', { name: 'Close', exact: true }).first().click()
+  await page.getByRole('button', { name: 'Expand Draft the project outline', exact: true }).click()
+  await page.getByRole('link', { name: 'Read through the source material', exact: true }).click()
+  assert.equal(await task.getByLabel('Deadline', { exact: true }).getAttribute('max'), today)
+  assert.equal(await task.getByLabel('Ideal completion date', { exact: true }).getAttribute('max'), today)
+  await visible(task.getByText('Linked through the parent task.', { exact: true }))
+  await task.locator('summary').filter({ hasText: 'Schedule' }).click()
+  assert.equal(await task.getByLabel('Pick a date', { exact: true }).getAttribute('max'), today)
+})
