@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useRouter } from '@tanstack/react-router'
 import { useRef, useState } from 'react'
 
 import {
@@ -15,15 +15,15 @@ import { AppShell } from './AppShell'
 /** How long a press must hold before a drag starts. */
 const HOLD_MS = 350
 
-export function TodayPage({ initial }: { initial: TodayData }) {
-  const [data, setData] = useState<TodayData>(initial)
+export function TodayPage({ initial: data }: { initial: TodayData }) {
+  const router = useRouter()
   const [notice, setNotice] = useState<string | null>(null)
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const openListRef = useRef<HTMLUListElement>(null)
 
   const apply = (result: TodayActionResult) => {
     if (result.ok) {
-      setData(result)
+      void router.invalidate()
       return
     }
     // Success is the state change itself; only failures say anything.

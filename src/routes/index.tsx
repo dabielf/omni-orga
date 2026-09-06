@@ -1,10 +1,11 @@
+import { loadFreshData } from '../lib/loadFreshData'
 import { createFileRoute } from '@tanstack/react-router'
 
 import { TodayPage } from '../components/TodayPage'
 import { loadTodayData } from '../domain/server'
 
 export const Route = createFileRoute('/')({
-  loader: () => loadTodayData(),
+  loader: (context) => loadFreshData(() => loadTodayData(), context),
   component: Home,
 })
 

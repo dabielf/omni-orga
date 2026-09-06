@@ -1,4 +1,4 @@
-import { createRouter, parseSearchWith } from '@tanstack/react-router'
+import { createRouter, parseSearchWith, type AnyRouter } from '@tanstack/react-router'
 
 import { routeTree } from './routeTree.gen'
 
@@ -27,5 +27,13 @@ function stringifySearch(search: Record<string, unknown>): string {
 const parseSearch = parseSearchWith((value) => value)
 
 export function getRouter() {
-  return createRouter({ routeTree, stringifySearch, parseSearch })
+  const router = createRouter({
+    context: { getRouter: (): AnyRouter => router },
+    routeTree,
+    stringifySearch,
+    parseSearch,
+    // Wait for fresh data when revisiting a cached page.
+    defaultStaleReloadMode: 'blocking',
+  })
+  return router
 }

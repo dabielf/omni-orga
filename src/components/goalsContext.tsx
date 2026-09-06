@@ -10,7 +10,7 @@ export type GoalsNotice = {
 
 export type GoalsUi = {
   data: GoalsData
-  /** Replaces the page data with a fresh snapshot from a mutation. */
+  /** Reloads route data after a successful mutation. The snapshot is not reused. */
   applyData: (data: GoalsData) => void
   notify: (message: string, options?: Omit<GoalsNotice, 'message'>) => void
   /** Top-level goals collapsed in the tree; subgoals show by default. */

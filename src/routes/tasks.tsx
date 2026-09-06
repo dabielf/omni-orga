@@ -1,4 +1,5 @@
-import { Outlet, createFileRoute } from '@tanstack/react-router'
+import { loadFreshData } from '../lib/loadFreshData'
+import { Outlet, createFileRoute, useRouter } from '@tanstack/react-router'
 import { useRef, useState } from 'react'
 
 import { AppShell, Page } from '../components/AppShell'
@@ -6,23 +7,22 @@ import { CreateSheet } from '../components/TaskSheet'
 import { TasksFilters } from '../components/TasksFilters'
 import { TasksRail } from '../components/TasksRail'
 import { TasksUiContext, type TasksUi } from '../components/tasksContext'
-import {
-  loadTasksData,
-  type TasksActionResult,
-  type TasksData,
-} from '../domain/server'
+import { loadTasksData } from '../domain/server'
 import { sanitizeTasksSearch } from '../lib/urlState'
 
 export const Route = createFileRoute('/tasks')({
   validateSearch: sanitizeTasksSearch,
-  loader: () => loadTasksData(),
+  loader: (context) => loadFreshData(() => loadTasksData(), context),
   component: TasksLayout,
 })
 
 function TasksLayout() {
-  const initial = Route.useLoaderData()
+  const data = Route.useLoaderData()
+  const router = useRouter()
+  const refresh = () => {
+    void router.invalidate()
+  }
   const search = Route.useSearch()
-  const [data, setData] = useState<TasksData>(initial)
   const [notice, setNotice] = useState<{
     message: string
     undo?: () => void
@@ -40,7 +40,7 @@ function TasksLayout() {
 
   const ui: TasksUi = {
     data,
-    applyData: setData,
+    applyData: refresh,
     notify,
     search,
     treeExpansion: {

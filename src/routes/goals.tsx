@@ -1,22 +1,23 @@
-import { Outlet, createFileRoute } from '@tanstack/react-router'
+import { loadFreshData } from '../lib/loadFreshData'
+import { Outlet, createFileRoute, useRouter } from '@tanstack/react-router'
 import { useRef, useState } from 'react'
 
 import { AppShell } from '../components/AppShell'
 import { GoalSheet } from '../components/GoalSheet'
 import { GoalsUiContext, type GoalsUi } from '../components/goalsContext'
-import {
-  loadGoalsData,
-  type GoalsData,
-} from '../domain/goalServer'
+import { loadGoalsData } from '../domain/goalServer'
 
 export const Route = createFileRoute('/goals')({
-  loader: () => loadGoalsData(),
+  loader: (context) => loadFreshData(() => loadGoalsData(), context),
   component: GoalsLayout,
 })
 
 function GoalsLayout() {
-  const initial = Route.useLoaderData()
-  const [data, setData] = useState<GoalsData>(initial)
+  const data = Route.useLoaderData()
+  const router = useRouter()
+  const refresh = () => {
+    void router.invalidate()
+  }
   const [notice, setNotice] = useState<{
     message: string
     actionLabel?: string
@@ -48,7 +49,7 @@ function GoalsLayout() {
 
   const ui: GoalsUi = {
     data,
-    applyData: setData,
+    applyData: refresh,
     notify,
     collapsed,
     toggleCollapsed,

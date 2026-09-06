@@ -5,7 +5,7 @@ import type { TasksSearch } from '../lib/urlState'
 
 export type TasksUi = {
   data: TasksData
-  /** Replaces the page data with a fresh snapshot from a mutation. */
+  /** Reloads route data after a successful mutation. The snapshot is not reused. */
   applyData: (data: TasksData) => void
   notify: (message: string, undo?: () => void) => void
   search: TasksSearch

@@ -1,14 +1,16 @@
 import {
   HeadContent,
   Scripts,
-  createRootRoute,
+  createRootRouteWithContext,
+  useRouter,
 } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
 import { EmptyState } from '../components/AppShell'
+import type { ViewContext } from '../lib/loadFreshData'
 import styles from '../styles.css?url'
 
-export const Route = createRootRoute({
+export const Route = createRootRouteWithContext<ViewContext>()({
   head: () => ({
     links: [{ rel: 'stylesheet', href: styles }],
     meta: [
@@ -18,8 +20,19 @@ export const Route = createRootRoute({
     ],
   }),
   notFoundComponent: NotFoundPage,
+  errorComponent: LoadErrorPage,
   shellComponent: RootDocument,
 })
+
+function LoadErrorPage() {
+  const router = useRouter()
+  return (
+    <main className="minimal-page" data-omni-orga="app">
+      <p role="alert">Could not load current data. Check your connection and try again.</p>
+      <button type="button" onClick={() => void router.invalidate()}>Try again</button>
+    </main>
+  )
+}
 
 function NotFoundPage() {
   return (

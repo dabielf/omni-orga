@@ -1,4 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { loadFreshData } from '../lib/loadFreshData'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useRef, useState } from 'react'
 
 import { AppShell, Page } from '../components/AppShell'
@@ -12,15 +13,15 @@ import { calendarUrl, sanitizeCalendarSearch } from '../lib/urlState'
 
 export const Route = createFileRoute('/calendar')({
   validateSearch: sanitizeCalendarSearch,
-  loader: () => loadCalendarData(),
+  loader: (context) => loadFreshData(() => loadCalendarData(), context),
   component: CalendarRoute,
 })
 
 function CalendarRoute() {
-  const initial = Route.useLoaderData()
+  const data = Route.useLoaderData()
+  const router = useRouter()
   const search = Route.useSearch()
   useCanonicalUrl(calendarUrl(search))
-  const [data, setData] = useState(initial)
   const [notice, setNotice] = useState<string | null>(null)
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
@@ -33,10 +34,7 @@ function CalendarRoute() {
 
   const apply = (result: TasksActionResult) => {
     if (result.ok) {
-      setData({
-        today: result.today,
-        tasks: result.tasks,
-      })
+      void router.invalidate()
     } else {
       notify(result.message)
     }

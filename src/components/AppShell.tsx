@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useRouter, useRouterState } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
 const pages = [
@@ -24,6 +24,11 @@ function navLinks() {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const router = useRouter()
+  const refreshError = useRouterState({
+    select: state => state.matches.some(match =>
+      (match.loaderData as { refreshError?: boolean } | undefined)?.refreshError),
+  })
   return (
     <div className="app-shell" data-omni-orga="app">
       <header className="global-nav">
@@ -45,6 +50,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         </details>
       </header>
       <main className="app-main">{children}</main>
+      {refreshError ? (
+        <div className="notice-chip" role="alert">
+          <span>Could not refresh. Shown data may be old.</span>
+          <button type="button" className="notice-undo" onClick={() => void router.invalidate()}>
+            Try again
+          </button>
+        </div>
+      ) : null}
     </div>
   )
 }
