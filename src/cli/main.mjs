@@ -76,12 +76,6 @@ const parseArgs = (args, spec) => {
   return { positionals, flags }
 }
 
-const flag = (flags, name) => flags[name]
-
-const flagList = (flags, name) => flags[name]
-
-const flagBoolean = (flags, name) => flags[name] === true
-
 const countPositionals = (positionals, arity, usage) => {
   if (positionals.length !== arity) return validation(`Usage: ${usage}`)
   return positionals
@@ -155,8 +149,8 @@ const verbs = {
       (store, positionals, flags) =>
         store.createGoal({
           title: positionals[0],
-          kind: goalKind(flag(flags, 'kind')),
-          parentId: flag(flags, 'parent'),
+          kind: goalKind(flags.kind),
+          parentId: flags.parent,
         }),
     ),
     get: goalVerb(
@@ -173,7 +167,7 @@ const verbs = {
       { state: 'value', query: 'value' },
       0,
       (store, _positionals, flags) => {
-        const state = flag(flags, 'state')
+        const state = flags.state
         if (state !== undefined && state !== 'active' && state !== 'archived') {
           return validation('--state must be active or archived')
         }
@@ -183,7 +177,7 @@ const verbs = {
                 .listGoals({ includeArchived: true })
                 .filter((goal) => goal.archivedAt !== null)
             : store.listGoals()
-        const query = flag(flags, 'query')
+        const query = flags.query
         return goals.filter((goal) => matchesQuery(query, [goal.title]))
       },
     ),
@@ -194,7 +188,7 @@ const verbs = {
       (store, positionals, flags) => {
         const kind = flags.kind === undefined ? undefined : goalKind(flags.kind)
         return store.updateGoal(positionals[0], {
-          title: flag(flags, 'title'),
+          title: flags.title,
           kind,
         })
       },
@@ -205,7 +199,7 @@ const verbs = {
       1,
       (store, positionals, flags) =>
         store.completeGoal(positionals[0], {
-          linkedTasks: linkedTaskDispositions(flagList(flags, 'task')),
+          linkedTasks: linkedTaskDispositions(flags.task),
         }),
     ),
     reopen: goalVerb(
@@ -220,7 +214,7 @@ const verbs = {
       1,
       (store, positionals, flags) =>
         store.archiveGoal(positionals[0], undefined, {
-          linkedTasks: linkedTaskDispositions(flagList(flags, 'task')),
+          linkedTasks: linkedTaskDispositions(flags.task),
         }),
     ),
     restore: goalVerb(
@@ -235,7 +229,7 @@ const verbs = {
       1,
       (store, positionals, flags) => {
         store.deleteGoal(positionals[0], {
-          linkedTasks: linkedTaskDispositions(flagList(flags, 'task')),
+          linkedTasks: linkedTaskDispositions(flags.task),
         })
         return {}
       },
@@ -265,14 +259,14 @@ const verbs = {
       },
       1,
       (store, positionals, flags) => {
-        const idealDate = flag(flags, 'ideal-date')
-        const deadline = flag(flags, 'deadline')
+        const idealDate = flags['ideal-date']
+        const deadline = flags.deadline
         return store.createTask({
           title: positionals[0],
-          parentId: flag(flags, 'parent'),
-          notes: flag(flags, 'notes'),
-          repeatable: flagBoolean(flags, 'repeatable') || undefined,
-          goalIds: flagList(flags, 'goal'),
+          parentId: flags.parent,
+          notes: flags.notes,
+          repeatable: (flags.repeatable === true) || undefined,
+          goalIds: flags.goal,
           idealCompletionDate: idealDate === 'none' ? undefined : idealDate,
           deadline: deadline === 'none' ? undefined : deadline,
         })
@@ -293,17 +287,17 @@ const verbs = {
       { goal: 'value', state: 'value', ...DAY_FLAGS },
       0,
       (store, _positionals, flags) => {
-        let tasks = taskListState(store, flag(flags, 'state'), flag(flags, 'goal'))
-        const on = flag(flags, 'on')
+        let tasks = taskListState(store, flags.state, flags.goal)
+        const on = flags.on
         if (on !== undefined) {
           optionalDay(on)
           tasks = tasks.filter((task) => task.scheduledDay === on)
         }
-        const query = flag(flags, 'query')
+        const query = flags.query
         tasks = tasks.filter((task) =>
           matchesQuery(query, [task.title, task.notes]),
         )
-        const limit = wholeNumber(flag(flags, 'limit'))
+        const limit = wholeNumber(flags.limit)
         return limit === undefined ? tasks : tasks.slice(0, limit)
       },
     ),
@@ -313,8 +307,8 @@ const verbs = {
       1,
       (store, positionals, flags) => {
         return store.updateTask(positionals[0], {
-          title: flag(flags, 'title'),
-          notes: flag(flags, 'notes'),
+          title: flags.title,
+          notes: flags.notes,
         })
       },
     ),
@@ -377,7 +371,7 @@ const verbs = {
       { goal: 'multi' },
       1,
       (store, positionals, flags) =>
-        store.setTaskGoalLinks(positionals[0], flagList(flags, 'goal') ?? []),
+        store.setTaskGoalLinks(positionals[0], flags.goal ?? []),
     ),
     history: goalVerb(
       'omni-orga task history <id>',
@@ -391,7 +385,7 @@ const verbs = {
       'omni-orga today list [--on <date>]',
       { on: 'value' },
       0,
-      (store, _positionals, flags) => store.getToday(flag(flags, 'on') ?? localDay()),
+      (store, _positionals, flags) => store.getToday(flags.on ?? localDay()),
     ),
     add: goalVerb(
       'omni-orga today add <id>',
@@ -420,7 +414,7 @@ const verbs = {
           )
         }
         if (chosen[0] !== 'bottom') {
-          return store.reorderToday(taskId, chosen[0] === 'top' ? null : flag(flags, 'after'))
+          return store.reorderToday(taskId, chosen[0] === 'top' ? null : flags.after)
         }
         const task = store.getTask(taskId)
         if (!task.scheduledDay) {
