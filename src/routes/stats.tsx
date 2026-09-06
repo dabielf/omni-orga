@@ -89,7 +89,7 @@ function StatsPage() {
                   {section.kind === 'ongoing' ? (
                     <>
                       <p className="stats-goal-line">
-                        {`Ongoing goal. ${section.doneCount} tasks and subtasks done in total.`}
+                        {`Ongoing goal. ${section.doneCount} ${section.doneCount === 1 ? 'task or subtask' : 'tasks and subtasks'} done in total.`}
                       </p>
                       {section.repeatables.length ? (
                         <ul className="stats-repeatables">
