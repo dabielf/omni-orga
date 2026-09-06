@@ -55,8 +55,8 @@ test('coverage counts a subgoal link for its parent goal too', () => {
 
 test('row meta shows the goal titles linked to the task', () => {
   assert.deepEqual(goalNames(data.open[0], data), ['Sub one'])
-  // A subtask inherits the goal links of its root task.
-  const subtask = { ...data.open[0], id: 't_3', parentId: 't_1', goalIds: [] }
+  // Today snapshots resolve inherited links even when ancestors are absent.
+  const subtask = { ...data.open[0], id: 't_3', parentId: 't_absent' }
   assert.deepEqual(goalNames(subtask, data), ['Sub one'])
   // A task without goal links shows nothing.
   assert.deepEqual(goalNames({ ...task }, data), [])

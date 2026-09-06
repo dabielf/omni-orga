@@ -253,3 +253,27 @@ test('empty today shows the message and one link to Tasks', async () => {
     runLifecycle('stop', emptyEnv)
   }
 })
+
+test('Today inherits root goal coverage for a scheduled grandchild without its ancestors', async () => {
+  const store = createDomainStore(databasePath)
+  const root = store.createTask({ title: 'Root outside Today', goalIds: [fixture.gQuiet.id] })
+  const child = store.createTask({ title: 'Child outside Today', parentId: root.id })
+  const leaf = store.createTask({ title: 'Scheduled grandchild', parentId: child.id })
+  store.planTask(leaf.id, today)
+  try {
+    for (const completed of [false, true]) {
+      if (completed) store.completeTask(leaf.id, `${today}T12:00:00.000Z`)
+      const html = await render('/')
+      assert.match(html, row(leaf.title))
+      assert.doesNotMatch(html, row(root.title))
+      assert.doesNotMatch(html, row(child.title))
+      const covered = html.slice(html.indexOf('Covered today'), html.indexOf('Not covered today'))
+      assert.ok(covered.includes(`goal=${fixture.gQuiet.id}`), 'root goal is covered by open and completed descendants')
+      const taskRow = html.slice(html.indexOf(`href="/tasks/${leaf.id}"`)).split('</li>')[0]
+      assert.ok(taskRow.includes('Quiet goal'), 'row names the inherited goal')
+    }
+  } finally {
+    store.deleteTask(root.id)
+    store.close()
+  }
+})

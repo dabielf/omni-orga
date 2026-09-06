@@ -97,13 +97,19 @@ export async function todaySnapshot(): Promise<TodayData> {
   const store = await getServerStore()
   const today = localDay()
   const { open, completed } = store.getToday(today)
+  // Ancestors need not be on Today. Resolve their links before sending this subset.
+  const withGoalLinks = (task: Task): Task => {
+    let root = task
+    while (root.parentId) root = store.getTask(root.parentId)
+    return root === task ? task : { ...task, goalIds: root.goalIds }
+  }
   return {
     today,
     goals: store
       .listGoals({})
       .filter((goal) => !goal.completedAt && !goal.archivedAt),
-    open,
-    completed,
+    open: open.map(withGoalLinks),
+    completed: completed.map(withGoalLinks),
   }
 }
 

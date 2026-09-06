@@ -28,12 +28,7 @@ export function coverageSplit(data: TodayData): GoalCoverage {
 /** Goal titles of a task for the factual row meta line. */
 export function goalNames(task: Task, data: TodayData) {
   const goalIndex = new Map(data.goals.map((goal) => [goal.id, goal]))
-  const root = task.parentId
-    ? data.open.find((item) => item.id === task.parentId) ??
-      data.completed.find((item) => item.id === task.parentId)
-    : null
-  const ids = root ? root.goalIds : task.goalIds
-  return ids
+  return task.goalIds
     .map((id) => goalIndex.get(id)?.title)
     .filter((title): title is string => Boolean(title))
 }
