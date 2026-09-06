@@ -92,7 +92,7 @@ Source: src/components/TaskSheet.tsx
 | F12 | Earlier repeatable undo blocked | Keep history unchanged. Link to the latest copy if available. |
 | F13 | Delete subtask warning | Required before deleting a task tree, including nested subtasks. |
 | F14 | Task name or notes save failed | Show Saving, Saved and failed states. Retain edits until retry succeeds; closing keeps the failed edit recoverable. |
-| F15 | Fresh repeatable copy | The new copy is available immediately. Subtasks are reset. Notes and links are kept. |
+| F15 | Fresh repeatable copy | The new copy appears immediately. It is available when it has no unfinished subtasks; a copied parent is blocked while its reset subtasks remain unfinished. Notes and links are kept. |
 | F16 | Task completed with undo | Ordinary completion reopens the same task on undo. Successful restoration uses Task restored with Undo. |
 
 ### Dates and scheduling
