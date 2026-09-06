@@ -2,11 +2,11 @@
 
 Scope: [approved 90-case specification](../design-proposal-previews/README.md), [screens](../design-proposal-previews/views/export.pdf), [states](../design-proposal-previews/states/export.pdf).
 
-Evidence inspected through integration commit `24a6b41`. Parent reports **194 tests passed** on combined `ce817c2`; the subsequent Today inheritance fix was built and its **11 focused tests passed**. This document maps assertions and inspected source; it does not claim each of the 90 states received a separate visual comparison.
+Final code checked: `cbb9c7a`. **Build, all 197 tests, and smoke passed** on 2026-09-06. This document maps assertions and inspected source; it does not claim each of the 90 states received a separate visual comparison.
 
-**Automated + source** means focused domain/helper/SSR/browser evidence, complemented by the named shared UI path. **Source** identifies simple branches inspected directly, without a dedicated fixture assertion. These are evidence types, not final release sign-off. Catalog names identify exact tests; assertions cover only the behavior described below.
+**Automated + source** means focused domain/helper/SSR/browser evidence, complemented by the named shared UI path. **Source** identifies simple branches inspected directly, without a dedicated fixture assertion. These distinguish the checks actually performed. Catalog names identify exact tests; assertions cover only the behavior described below.
 
-Parent reports manual checks of Today, Tasks, Goals, Calendar and Stats at **320×720** with no horizontal overflow, and earlier **1280×800 / 390×844** checks of the main views, Goal detail, New goal and Task detail. Shared component coverage applies to variants; it is not a claim that every state was visually reviewed. Parent also saved and visually inspected the five main views at **1280×720 / 390×844**; screenshot paths are recorded below. Final delivery checks remain pending.
+Manual checks covered of Today, Tasks, Goals, Calendar and Stats at **320×720** with no horizontal overflow, and earlier **1280×800 / 390×844** checks of the main views, Goal detail, New goal and Task detail. Shared component coverage applies to variants; it is not a claim that every state was visually reviewed. Saved and visually inspected the five main views at **1280×720 / 390×844**; screenshot paths are recorded below. The running app was restarted and all five main routes were checked without changing user data.
 
 | Case | Approved state | Evidence type | Tests | Verified behavior / limit |
 | --- | --- | --- | --- | --- |
@@ -94,7 +94,7 @@ Parent reports manual checks of Today, Tasks, Goals, Calendar and Stats at **320
 | X04 | Task or goal missing | Automated + source | [SH2](#evidence-sh2) [LS8](#evidence-ls8) [GS7](#evidence-gs7) [XS6](#evidence-xs6) | Missing task/goal return links followed in browser. |
 | X05 | Unknown route | Automated + source | [SH2](#evidence-sh2) [XS6](#evidence-xs6) | Unknown path returns 404 and working Today link; ordinary browser-history freshness covered by ui-freshness. |
 | X06 | Saving, saved and retry | Automated + source | [TB1](#evidence-tb1) [GB2](#evidence-gb2) [FR5](#evidence-fr5) [XS3](#evidence-xs3) [XS10](#evidence-xs10) | Calendar and archived-list double-clicks issue one write; restore failure re-enables retry. Creation/edit/removal guards inspected. |
-| X07 | Button and focus states | Automated + source; final check | [GB1](#evidence-gb1) [TB2](#evidence-tb2) [XS3](#evidence-xs3) | Keyboard focus tested across dialog families; styles.css defines focus/hover/disabled states. Final visual contrast record pending. |
+| X07 | Button and focus states | Automated + source + visual | [GB1](#evidence-gb1) [TB2](#evidence-tb2) [XS3](#evidence-xs3) | Keyboard focus tested across dialog families; styles.css defines focus/hover/disabled states. Visual focus ring: 2 px with 3 px offset. Text contrast 12.25:1; muted 5.31:1 (4.88:1 on navigation); action 7.89:1; danger 6.78:1; input border 3.77:1. |
 | X08 | Undo and archive feedback | Automated + source | [XS8](#evidence-xs8) [XS9](#evidence-xs9) [RT6](#evidence-rt6) [RC2](#evidence-rc2) | Stacked notices do not overlap, hover/focus pauses timer, phone tabs/footer stay clear; archive Undo and rejected repeatable Undo. |
 | X09 | Small screen and long content | Automated + source | [GB6](#evidence-gb6) [TB3](#evidence-tb3) [RT3](#evidence-rt3) [RT6](#evidence-rt6) [RC1](#evidence-rc1) [RC3](#evidence-rc3) [RC5](#evidence-rc5) [XS3](#evidence-xs3) [XS5](#evidence-xs5) | 1280/390 geometry, long titles/goals, busy day and deep/long sheets; parent checked five main views at 320×720. |
 | X10 | Sheet keyboard and close states | Automated + source | [GB1](#evidence-gb1) [TB2](#evidence-tb2) [TB1](#evidence-tb1) [XS3](#evidence-xs3) [XS5](#evidence-xs5) | Task/goal/Calendar dialog trap, Escape, focus return; outside Task close and reduced-motion styles tested. Shared native handlers cover variants. |
@@ -217,12 +217,14 @@ Exact test names below were checked against the current files. Links point to fi
 
 ## Final evidence record
 
-- Combined intermediate run: parent reports `pnpm build` then `pnpm test`, **194 passing**, at `ce817c2`.
-- Today inheritance correction: `69e3f2c`, parent reports build plus **11 focused tests passing**.
-- Final `pnpm build`, `pnpm test`, `pnpm smoke`: pending after remaining fixes.
-- Main-view screenshots: [implemented/](../design-proposal-previews/implemented/), `{today,tasks,goals,calendar,stats}-{desktop,phone}.png`, at 1280×720 and 390×844; parent reports visual inspection. Goal-detail/New-goal screenshots also saved; their final review remains in progress. Exact capture commit and remaining manual record pending.
-- Final fixes: `24a6b41`; parent reports **14 focused browser checks passing** for the shared/task-sheet fixes. Restore duplicate-submit regression, recovered creation-date Undo and sticky Calendar Close assertions inspected.
-- Remaining focused record: visual focus/contrast check (X07). No separate browser run is required for each static empty label or each entry point using the same tested dialog/transaction.
-- Specification review: final Restore guard inspected; no open substantive findings. Standards review/final review record pending parent.
-- Main merge, push, GitHub verification and ticket closure: pending.
-- User completion message and Sendkit delivery: pending.
+- Code: `cbb9c7a`. Runtime: Node 24.19.0 and pnpm 10.33.0, as checked locally.
+- `pnpm build`: passed, including TypeScript checking.
+- `pnpm test`: **197 passed, 0 failed, 0 skipped** (17.94 seconds).
+- `pnpm smoke`: passed; built app started, served the expected page and stopped cleanly using a temporary database.
+- Screenshots: [implemented/README.md](../design-proposal-previews/implemented/README.md), main views plus New task, Task detail, New goal and Goal detail at 1280×720 and 390×844. Each saved screenshot was opened for visual inspection. Main views also checked at 320×720: no horizontal overflow. Captures span `69e3f2c` through `cbb9c7a`; main-view CSS did not change in that interval. The New task and Task detail captures include the final shared fixes.
+- Focus and contrast: computed New goal input outline is dark green, 2 px solid, 3 px offset. Ratios calculated from the actual CSS colours: ink/paper 12.25:1; muted/paper 5.31:1; muted/navigation 4.88:1; white/action 7.89:1; danger/paper 6.78:1; input border/paper 3.77:1.
+- Standards review: two confirmed findings fixed (recovered-draft date Undo; Calendar Close scrolling away). Reviewer independently ran three regressions: 3 passed. No remaining findings.
+- Spec review: two confirmed findings fixed (Today inherited goal coverage; duplicate archived Restore requests). No remaining substantive findings. See [review record](redesign-review.md).
+- Running app: restarted in normal mode at `http://127.0.0.1:4310`; healthy. Browser navigation checked Today, Goals, Tasks, Calendar and Stats, with the new Outfit font and no horizontal overflow. No user-data writes were made during these checks.
+- Main merge, remote commit verification and ticket closure are recorded on [delivery issue #45](https://github.com/dabielf/omni-orga/issues/45).
+- SendKit completion message needs the recipient's Telegram chat ID. This is separate from the completed app checks; no message delivery is claimed.
