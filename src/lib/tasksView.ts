@@ -238,3 +238,13 @@ export function formatShortDate(day: string) {
   const { month, dayOfMonth } = dayParts(day)
   return `${month} ${dayOfMonth}`
 }
+
+/** The selected view stays clear in both the desktop rail and phone menu. */
+export function tasksHeading(goals: Goal[], filter: TasksFilter) {
+  if (filter.view === 'completed') return 'Completed'
+  if (filter.view === 'archived') return 'Archived'
+  if (filter.goal === 'priority') return 'Priority goals'
+  if (filter.goal === 'none') return 'No goal'
+  if (filter.goal) return goals.find(goal => goal.id === filter.goal)?.title ?? 'Goal not found'
+  return 'All tasks'
+}

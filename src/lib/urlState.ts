@@ -17,7 +17,7 @@ const wellFormedGoalId = /^[gt]_[a-z0-9_-]+$/
 export function sanitizeTasksSearch(search: Search): TasksSearch {
   const clean: TasksSearch = {}
   if (
-    search.goal === 'priority' ||
+    search.goal === 'priority' || search.goal === 'none' ||
     (typeof search.goal === 'string' && wellFormedGoalId.test(search.goal))
   ) {
     clean.goal = search.goal

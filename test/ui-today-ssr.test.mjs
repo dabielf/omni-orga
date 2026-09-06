@@ -65,6 +65,7 @@ before(() => {
   const gWork = store.createGoal({ title: 'Steady work', kind: 'ongoing' })
   const gHome = store.createGoal({ title: 'Home basics', kind: 'ongoing' })
   const gQuiet = store.createGoal({ title: 'Quiet goal', kind: 'ongoing' })
+  for (const goal of [gWork, gHome, gQuiet]) store.setGoalPriority(goal.id, true)
 
   // Open tasks planned today. Planning order is alpha, beta, gamma; the
   // manual reorder puts gamma right after alpha, so the rendered order

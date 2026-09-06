@@ -6,10 +6,10 @@ import { coverageSplit, goalNames, longDay } from '../src/lib/todayView.ts'
 const today = '2026-08-29'
 
 const goals = [
-  { id: 'g_top1', parentId: null, title: 'Top one', kind: 'ongoing', priority: false, sortOrder: 0, completedAt: null, archivedAt: null, createdAt: '' },
-  { id: 'g_sub1', parentId: 'g_top1', title: 'Sub one', kind: 'ongoing', priority: false, sortOrder: 0, completedAt: null, archivedAt: null, createdAt: '' },
-  { id: 'g_top2', parentId: null, title: 'Top two', kind: 'ongoing', priority: false, sortOrder: 1, completedAt: null, archivedAt: null, createdAt: '' },
-  { id: 'g_done', parentId: null, title: 'Finished goal', kind: 'one_shot', priority: false, sortOrder: 2, completedAt: '2026-08-20', archivedAt: null, createdAt: '' },
+  { id: 'g_top1', parentId: null, title: 'Top one', kind: 'ongoing', priority: true, sortOrder: 0, completedAt: null, archivedAt: null, createdAt: '' },
+  { id: 'g_sub1', parentId: 'g_top1', title: 'Sub one', kind: 'ongoing', priority: true, sortOrder: 0, completedAt: null, archivedAt: null, createdAt: '' },
+  { id: 'g_top2', parentId: null, title: 'Top two', kind: 'ongoing', priority: true, sortOrder: 1, completedAt: null, archivedAt: null, createdAt: '' },
+  { id: 'g_done', parentId: null, title: 'Finished goal', kind: 'one_shot', priority: true, sortOrder: 2, completedAt: '2026-08-20', archivedAt: null, createdAt: '' },
 ]
 
 const task = {
@@ -49,7 +49,7 @@ test('coverage counts a subgoal link for its parent goal too', () => {
   )
   assert.deepEqual(
     notCovered.map((goal) => goal.id),
-    ['g_done'],
+    [],
   )
 })
 
@@ -63,5 +63,11 @@ test('row meta shows the goal titles linked to the task', () => {
 })
 
 test('longDay formats the heading date factually', () => {
-  assert.equal(longDay('2026-08-29'), 'Saturday, August 29')
+  assert.equal(longDay('2026-08-29'), 'Saturday, 29 August')
+})
+
+test('coverage has no implicit priorities and excludes inactive goals', () => {
+  assert.deepEqual(coverageSplit({ ...data, goals: goals.map(goal => ({ ...goal, priority: false })) }), { covered: [], notCovered: [] })
+  const split = coverageSplit({ ...data, goals: [...goals, { ...goals[0], id: 'g_priority', title: 'Priority' }] })
+  assert.deepEqual(split.notCovered.map(goal => goal.id), ['g_priority'])
 })

@@ -87,3 +87,8 @@ test('calendar and stats URLs keep only durable valid state', () => {
   assert.equal(statsUrl({ period: '365' }), '/stats?period=365')
   assert.equal(statsUrl({}), '/stats')
 })
+
+test('No goal survives links and URL reload with other filters', () => {
+  assert.equal(tasksUrl({ goal: 'none', available: '1', ideal: 'today' }), '/tasks?goal=none&available=1&ideal=today')
+  assert.deepEqual(sanitizeTasksSearch({ goal: 'none', available: 1 }), { goal: 'none', available: '1' })
+})

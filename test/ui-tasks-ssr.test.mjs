@@ -136,9 +136,10 @@ test('all tasks view shows active trees, states, counts and meta', async () => {
   assert.match(html, row('Paint the walls'))
   assert.match(html, /goal-chip[^>]*>Home basics</)
 
-  // Blocked task shows its state and disabled completion, collapsed with count.
-  assert.match(html, /aria-label="Paint the walls is blocked by subtasks"/)
-  assert.match(html, /class="remaining">1(<[^>]+>)? remaining</)
+  // Blocked task has disclosure and a factual count, with no completion action.
+  assert.doesNotMatch(html, /aria-label="Complete Paint the walls"/)
+  assert.match(html, /aria-label="Expand Paint the walls"/)
+  assert.match(html, /class="remaining">1(<[^>]+>)? subtask(<[^>]+>)? left</)
 
   // Repeatable fresh copy: repeatable mark with the previous completion.
   assert.match(html, row('Water the plants'))

@@ -26,7 +26,7 @@ function MetaBits({
   root?: Task
   showGoalChip: boolean
 }) {
-  const { data } = useTasksUi()
+  const { data, search } = useTasksUi()
   const goalSource = root ?? task
   const bits: ReactNode[] = []
   if (showGoalChip && goalSource.goalIds.length) {
@@ -45,9 +45,9 @@ function MetaBits({
     }
     if (goalSource.goalIds.length > 1) {
       bits.push(
-        <span key="more" className="goal-chip-more">
+        <Link key="more" className="goal-chip-more" to="/tasks/$taskId" params={{ taskId: task.id }} search={search} aria-label={`Show all goals for ${task.title}`}>
           +{goalSource.goalIds.length - 1}
-        </span>,
+        </Link>,
       )
     }
   }
@@ -62,18 +62,18 @@ function MetaBits({
       </span>,
     )
   }
-  if (task.idealCompletionDate) {
+  if (!task.completedAt && !task.archivedAt && task.idealCompletionDate) {
     bits.push(
       <span key="ideal" className="date-txt">
         Ideal {formatShortDate(task.idealCompletionDate)}
       </span>,
     )
   }
-  if (task.deadline) {
+  if (!task.completedAt && !task.archivedAt && task.deadline) {
     if (task.deadline < data.today) {
       bits.push(
         <span key="overdue" className="overdue-chip">
-          Overdue
+          <span aria-hidden="true">⚠ </span>Overdue
         </span>,
       )
     }
@@ -83,7 +83,7 @@ function MetaBits({
       </span>,
     )
   }
-  if (task.blocked) {
+  if (!task.completedAt && !task.archivedAt && task.blocked) {
     bits.push(
       <span key="blocked" className="state-label">
         Blocked
@@ -108,7 +108,7 @@ function TaskTitleLink({ task, search }: { task: Task; search: TasksSearch }) {
 
 function useCompleter() {
   const { applyData, notify } = useTasksUi()
-  return (task: Task) => void toggleTaskComplete(task, { applyData, notify })
+  return (task: Task) => void toggleTaskComplete(task, { applyData, notify }).catch(() => notify('Could not save the change. Try again.'))
 }
 
 function AvailableRowItem({ row }: { row: AvailableRow }) {
@@ -118,15 +118,14 @@ function AvailableRowItem({ row }: { row: AvailableRow }) {
   return (
     <li className="task-row-item">
       <div className="task-row">
-        <span className="tree-toggle" aria-hidden="true" />
         <CompleteCircle task={row.task} onToggle={() => onComplete(row.task)} />
         <span className="task-copy">
           <TaskTitleLink task={row.task} search={search} />
           {row.path.length ? (
             <span className="parent-path">{row.path.join(' › ')}</span>
           ) : null}
+          <MetaBits task={row.task} root={row.root} showGoalChip={showChips} />
         </span>
-        <MetaBits task={row.task} root={row.root} showGoalChip={showChips} />
         <ScheduleMenu task={row.task} />
       </div>
     </li>
@@ -149,14 +148,14 @@ function TreeRowItem({
     (child) => !child.archivedAt,
   )
   const collapsed = hasChildren && !expanded.has(row.task.id)
-  const remaining = collapsed ? remainingCount(row.task, siblings) : 0
+  const remaining = remainingCount(row.task, siblings)
   return (
     <li className="task-row-item">
       <div
         className="task-row"
         style={
           row.depth
-            ? { paddingInlineStart: `${row.depth * 1.4}rem` }
+            ? { paddingInlineStart: `${Math.min(row.depth, 3) * 1.25}rem` }
             : undefined
         }
       >
@@ -174,20 +173,16 @@ function TreeRowItem({
           >
             ›
           </button>
-        ) : (
-          <span className="tree-toggle" aria-hidden="true" />
-        )}
-        <CompleteCircle task={row.task} onToggle={() => onComplete(row.task)} />
+        ) : null}
+        {!row.task.blocked ? <CompleteCircle task={row.task} onToggle={() => onComplete(row.task)} /> : null}
         <span className="task-copy">
           <TaskTitleLink task={row.task} search={search} />
-          {row.path.length ? (
-            <span className="parent-path">{row.path.join(' › ')}</span>
+          {row.path.length || row.task.parentId ? (
+            <span className="parent-path">{row.path.length ? row.path.join(' › ') : data.tasks.find(task => task.id === row.task.parentId)?.title}</span>
           ) : null}
+          <MetaBits task={row.task} showGoalChip={row.depth === 0} />
         </span>
-        {collapsed && remaining ? (
-          <span className="remaining">{remaining} remaining</span>
-        ) : null}
-        <MetaBits task={row.task} showGoalChip={row.depth === 0} />
+        {remaining ? <span className="remaining">{remaining} subtask{remaining === 1 ? '' : 's'} left</span> : null}
         <ScheduleMenu task={row.task} />
       </div>
     </li>
@@ -202,18 +197,17 @@ function CompletedList({ tasks }: { tasks: Task[] }) {
       {tasks.map((task) => (
         <li key={task.id} className="task-row-item">
           <div className="task-row is-history">
-            <span className="tree-toggle" aria-hidden="true" />
-            <CompleteCircle task={task} onToggle={() => onComplete(task)} />
+                <CompleteCircle task={task} onToggle={() => onComplete(task)} />
             <span className="task-copy">
               <TaskTitleLink task={task} search={search} />
-            </span>
-            <span className="task-meta">
+              <span className="task-meta">
               {task.completedAt ? (
                 <span className="date-txt">
                   Completed {formatShortDate(task.completedAt.slice(0, 10))}
                 </span>
               ) : null}
               <MetaBits task={task} showGoalChip />
+              </span>
             </span>
           </div>
         </li>
@@ -229,8 +223,11 @@ function ArchivedList({ tasks }: { tasks: Task[] }) {
     if (result.ok) {
       applyData(result)
       notify('Task restored.', async () => {
-        const undo = await archiveTaskAction({ data: { taskId: task.id } })
-        if (undo.ok) applyData(undo)
+        try {
+          const undo = await archiveTaskAction({ data: { taskId: task.id } })
+          if (undo.ok) applyData(undo)
+          else notify(undo.message)
+        } catch { notify('Could not undo restoration. Try again.') }
       })
     } else {
       notify(result.message)
@@ -241,22 +238,21 @@ function ArchivedList({ tasks }: { tasks: Task[] }) {
       {tasks.map((task) => (
         <li key={task.id} className="task-row-item">
           <div className="task-row is-history">
-            <span className="tree-toggle" aria-hidden="true" />
-            <span className="task-copy">
+                <span className="task-copy">
               <TaskTitleLink task={task} search={search} />
-            </span>
-            <span className="task-meta">
+              <span className="task-meta">
               {task.archivedAt ? (
                 <span className="date-txt">
                   Archived {formatShortDate(task.archivedAt.slice(0, 10))}
                 </span>
               ) : null}
               <MetaBits task={task} showGoalChip />
+              </span>
             </span>
             <button
               type="button"
               className="secondary-btn"
-              onClick={() => void restore(task)}
+              onClick={() => void restore(task).catch(() => notify('Could not restore the task. Try again.'))}
             >
               Restore
             </button>
@@ -292,7 +288,7 @@ export function TasksList() {
       archived
         ? !task.parentId && Boolean(task.archivedAt)
         : !task.parentId && Boolean(task.completedAt) && !task.archivedAt,
-    )
+    ).sort((a, b) => (archived ? b.archivedAt! : b.completedAt!).localeCompare(archived ? a.archivedAt! : a.completedAt!))
     if (!tasks.length) {
       return (
         <EmptyState

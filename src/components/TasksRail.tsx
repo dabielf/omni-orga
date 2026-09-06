@@ -1,16 +1,11 @@
 import { Link } from '@tanstack/react-router'
 
 import {
-  railCounts,
-  type RailCounts,
+  tasksHeading,
   type TasksData,
 } from '../lib/tasksView'
 import { tasksUrl, type TasksSearch } from '../lib/urlState'
 import { useTasksUi } from './tasksContext'
-
-function RailCount({ value }: { value: number }) {
-  return <span className="rail-count">{value}</span>
-}
 
 function railLinkClass(current: boolean) {
   return current ? 'filter-link is-current' : 'filter-link'
@@ -19,19 +14,17 @@ function railLinkClass(current: boolean) {
 function GoalRows({
   data,
   search,
-  counts,
   expanded,
   toggle,
 }: {
   data: TasksData
   search: TasksSearch
-  counts: RailCounts
   expanded: Set<string>
   toggle: (goalId: string) => void
 }) {
-  const topLevel = data.goals.filter((goal) => !goal.parentId)
+  const topLevel = data.goals.filter((goal) => !goal.parentId && !goal.completedAt && !goal.archivedAt)
   return topLevel.map((goal) => {
-    const subgoals = data.goals.filter((item) => item.parentId === goal.id)
+    const subgoals = data.goals.filter((item) => item.parentId === goal.id && !item.completedAt && !item.archivedAt)
     const isOpen = expanded.has(goal.id)
     const rows = [
       <div className="rail-goal-row" key={goal.id}>
@@ -47,9 +40,7 @@ function GoalRows({
           >
             ›
           </button>
-        ) : (
-          <span className="rail-disclosure" aria-hidden="true" />
-        )}
+        ) : null}
         <Link
           className={railLinkClass(search.goal === goal.id)}
           aria-current={search.goal === goal.id ? 'page' : undefined}
@@ -57,7 +48,6 @@ function GoalRows({
           search={{ ...search, goal: goal.id, view: undefined }}
         >
           {goal.title}
-          <RailCount value={counts.goals[goal.id] ?? 0} />
         </Link>
       </div>,
     ]
@@ -73,7 +63,6 @@ function GoalRows({
               search={{ ...search, goal: subgoal.id, view: undefined }}
             >
               {subgoal.title}
-              <RailCount value={counts.goals[subgoal.id] ?? 0} />
             </Link>
           ))}
         </div>,
@@ -85,12 +74,11 @@ function GoalRows({
 
 export function TasksRail() {
   const { data, search, goalExpansion } = useTasksUi()
-  const counts = railCounts(data)
   const keepFilters = { available: search.available, ideal: search.ideal }
 
   const railContent = (
     <div className="task-rail-content">
-      <p className="rail-label">Views</p>
+
       <div className="filter-list">
         <Link
           className={railLinkClass(!search.goal && !search.view)}
@@ -99,7 +87,6 @@ export function TasksRail() {
           search={{ ...keepFilters, goal: undefined, view: undefined }}
         >
           All tasks
-          <RailCount value={counts.all} />
         </Link>
         <Link
           className={railLinkClass(search.goal === 'priority')}
@@ -108,7 +95,6 @@ export function TasksRail() {
           search={{ ...keepFilters, goal: 'priority', view: undefined }}
         >
           Priority goals
-          <RailCount value={counts.priority} />
         </Link>
         <Link
           className={railLinkClass(search.goal === 'none')}
@@ -117,7 +103,6 @@ export function TasksRail() {
           search={{ ...keepFilters, goal: 'none', view: undefined }}
         >
           No goal
-          <RailCount value={counts.none} />
         </Link>
       </div>
       <p className="rail-label">Goals</p>
@@ -125,7 +110,6 @@ export function TasksRail() {
         <GoalRows
           data={data}
           search={search}
-          counts={counts}
           expanded={goalExpansion.expanded}
           toggle={goalExpansion.toggle}
         />
@@ -139,7 +123,6 @@ export function TasksRail() {
           search={{ ...keepFilters, view: 'completed' }}
         >
           Completed
-          <RailCount value={counts.completed} />
         </Link>
         <Link
           className={railLinkClass(search.view === 'archived')}
@@ -148,7 +131,6 @@ export function TasksRail() {
           search={{ ...keepFilters, view: 'archived' }}
         >
           Archived
-          <RailCount value={counts.archived} />
         </Link>
       </div>
     </div>
@@ -160,7 +142,7 @@ export function TasksRail() {
         {railContent}
       </nav>
       <details className="task-rail task-rail-menu">
-        <summary>Views</summary>
+        <summary aria-label="Task views">{tasksHeading(data.goals, search)}</summary>
         {railContent}
       </details>
     </>
