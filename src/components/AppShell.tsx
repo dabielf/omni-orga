@@ -2,11 +2,11 @@ import { Link, useRouter, useRouterState } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
 const pages = [
-  { to: '/', label: 'Today' },
-  { to: '/goals', label: 'Goals' },
-  { to: '/tasks', label: 'Tasks' },
-  { to: '/calendar', label: 'Calendar' },
-  { to: '/stats', label: 'Stats' },
+  { to: '/', label: 'Today', icon: <><circle cx="12" cy="12" r="3.5" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></> },
+  { to: '/goals', label: 'Goals', icon: <path d="M5 22V4c5-5 9 5 14 0v12c-5 5-9-5-14 0" /> },
+  { to: '/tasks', label: 'Tasks', icon: <path d="m3 6 2 2 3-3m4 1h9M3 13l2 2 3-3m4 1h9M3 20l2 2 3-3m4 1h9" /> },
+  { to: '/calendar', label: 'Calendar', icon: <><rect x="3" y="5" width="18" height="17" rx="2" /><path d="M7 2v6m10-6v6M3 11h18M7 15h1m4 0h1m4 0h1M7 18h1m4 0h1m4 0h1" /></> },
+  { to: '/stats', label: 'Stats', icon: <path d="M5 21V13m7 8V3m7 18V8" /> },
 ] as const
 
 function navLinks() {
@@ -18,7 +18,8 @@ function navLinks() {
       activeProps={{ className: 'global-link is-current' }}
       inactiveProps={{ className: 'global-link' }}
     >
-      {page.label}
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{page.icon}</svg>
+      <span>{page.label}</span>
     </Link>
   ))
 }
@@ -39,15 +40,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         >
           {navLinks()}
         </nav>
-        <details className="global-nav-disclosure">
-          <summary>Menu</summary>
-          <nav
-            className="global-links global-links-menu"
-            aria-label="Main navigation"
-          >
-            {navLinks()}
-          </nav>
-        </details>
       </header>
       <main className="app-main">{children}</main>
       {refreshError ? (
