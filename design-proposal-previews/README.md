@@ -1,6 +1,6 @@
 # Omni-orga design set
 
-Design only. No app code changes.
+Approved design reference. Implementation is tracked in [redesign plan #46](https://github.com/dabielf/omni-orga/issues/46), with [verification evidence](../docs/redesign-verification.md).
 
 The editable file is [omni-orga-design-proposal.pen](../omni-orga-design-proposal.pen). Start with **Start here / Design coverage** in Pen.
 
@@ -193,4 +193,4 @@ Source: src/routes/__root.tsx; src/components/AppShell.tsx; shared design specif
 
 ## Review status
 
-Checked all 54 root frames: no clipped layers or overlapping frames. All 90 state cases are present, with no unfinished placeholders. Reviewed screen and state screenshots, text and control contrast, and coverage against the current product rules and source. Darkened 78 input borders to meet 3:1 contrast. Saved the Pen file and exported PDFs with 28 screen pages and 24 state-board pages; rendered sample pages from both exports and checked them visually. No app source files changed. No browser or app interaction tests are implied by these static designs.
+Checked all 54 root frames: no clipped layers or overlapping frames. All 90 state cases are present, with no unfinished placeholders. Reviewed screen and state screenshots, text and control contrast, and coverage against the current product rules and source. Darkened 78 input borders to meet 3:1 contrast. Saved the Pen file and exported PDFs with 28 screen pages and 24 state-board pages; rendered sample pages from both exports and checked them visually. These checks describe the design proposal. App implementation checks are recorded separately in the verification evidence.
