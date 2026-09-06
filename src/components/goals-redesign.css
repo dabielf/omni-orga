@@ -73,6 +73,9 @@
 .goal-move-options > div { margin-bottom:12px; }
 .goal-move-options button { width:100%; text-align:left; white-space:normal; }
 .goal-dialog :focus-visible, .goals-index-page :focus-visible, .goal-detail-page :focus-visible { outline:2px solid #285B40; outline-offset:3px; }
+.goal-dialog:not(.is-compact) { position:fixed; inset:0 0 0 auto; margin:0; width:min(560px, 100vw); height:100dvh; max-height:none; border-radius:0; box-shadow:none; }
+.goal-create-form { min-height:calc(100% - 94px); display:flex; flex-direction:column; }
+.goal-create-form .goal-dialog-body { flex:1; }
 @media (max-width: 44rem) {
   .goals-heading { gap:12px; margin-bottom:24px; }
   .goal-row { gap:8px; min-height:90px; }
@@ -90,8 +93,6 @@
   .goal-dialog-head { padding:24px 24px 26px; }
   .goal-dialog-head h2 { font-size:28px; }
   .goal-dialog-body { padding:0 24px 24px; }
-  .goal-create-form { min-height:calc(100% - 94px); display:flex; flex-direction:column; }
-  .goal-create-form .goal-dialog-body { flex:1; }
   .goal-dialog-foot { padding:0 24px max(24px, env(safe-area-inset-bottom)); }
   .goal-dialog.is-compact .goal-dialog-head h2 { font-size:23px; }
 }
