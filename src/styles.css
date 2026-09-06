@@ -162,45 +162,6 @@ p {
   margin-top: 3.25rem;
 }
 
-.record-list {
-  width: 100%;
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.record-list > li {
-  border-top: 1px solid var(--line);
-}
-
-.record-list > li:last-child {
-  border-bottom: 1px solid var(--line);
-}
-
-.record-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 1rem;
-  align-items: center;
-  width: 100%;
-  min-width: 0;
-  padding: 1rem 0.2rem;
-  color: var(--ink);
-  font-weight: 560;
-  text-decoration: none;
-}
-
-.record-row > :first-child {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.record-row:hover > :first-child {
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
-}
-
 .state-label {
   display: inline-flex;
   align-items: center;
@@ -282,21 +243,6 @@ p {
   min-width: 0;
 }
 
-.state-line {
-  display: flex;
-  gap: 0.6rem;
-  align-items: center;
-  color: var(--muted);
-}
-
-.status-dot {
-  width: 0.65rem;
-  height: 0.65rem;
-  border: 2px solid var(--accent-ink);
-  border-radius: 50%;
-  background: var(--accent);
-}
-
 .plain-action {
   display: inline-flex;
   min-height: 2.5rem;
@@ -349,13 +295,6 @@ p {
   background: var(--accent);
   color: var(--ink);
   font-weight: 700;
-}
-
-.view-label {
-  margin-bottom: 1.25rem;
-  color: var(--muted);
-  font-size: 0.9rem;
-  font-weight: 650;
 }
 
 @media (max-width: 64rem) {
@@ -476,11 +415,6 @@ p {
 
   .task-rail-content {
     padding: 0.4rem 0 1.25rem;
-  }
-
-  .record-row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.5rem;
   }
 
   .state-label {
@@ -604,14 +538,6 @@ p {
   align-items: center;
   gap: 1rem;
   margin-bottom: 1.25rem;
-}
-
-.segmented {
-  display: inline-flex;
-  padding: 0.125rem;
-  border: 1px solid var(--line);
-  border-radius: 0.45rem;
-  background: var(--nav-surface);
 }
 
 .segmented button {
@@ -750,20 +676,6 @@ p {
 .goal-row:hover .goal-row-actions,
 .goal-row:focus-within .goal-row-actions {
   opacity: 1;
-}
-
-.icon-btn {
-  display: inline-flex;
-  padding: 0.3rem;
-  border: 0;
-  border-radius: 0.35rem;
-  background: none;
-  color: var(--muted);
-}
-
-.icon-btn:hover {
-  background: var(--surface);
-  color: var(--ink);
 }
 
 .icon-btn[aria-pressed='true'] {
@@ -1772,6 +1684,7 @@ button.rail-disclosure:hover {
 
 .icon-btn {
   display: inline-flex;
+  padding: 0.3rem;
   width: 1.7rem;
   height: 1.7rem;
   flex: 0 0 auto;
