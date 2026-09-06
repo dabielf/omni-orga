@@ -1,5 +1,6 @@
 import type { Goal, Task } from '../domain/store'
 
+import { formatShortDate } from './tasksView.ts'
 import type { StatsPeriod } from './urlState'
 
 /** Length of each stats period in days; '365' is presented as 12 months. */
@@ -17,21 +18,6 @@ export const PERIOD_LABELS: Record<StatsPeriod, string> = {
 
 const DAY_MS = 86_400_000
 
-const MONTHS = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-]
-
 /**
  * Completions per week over the period: count divided by the period's week
  * count (days / 7), rounded to one decimal place.
@@ -46,12 +32,6 @@ export function repeatableRowText(count: number, days: number): string {
   const rateText = Number.isInteger(rate) ? String(rate) : rate.toFixed(1)
   const unit = count === 1 ? 'time' : 'times'
   return `${count} ${unit} in ${days} days · ≈${rateText} a week`
-}
-
-/** Short factual day for completion listings, e.g. "Aug 27". */
-export function formatStatsDay(iso: string): string {
-  const date = new Date(`${iso.slice(0, 10)}T00:00:00Z`)
-  return `${MONTHS[date.getUTCMonth()]} ${date.getUTCDate()}`
 }
 
 export type StatsRepeatableRow = {
@@ -177,7 +157,7 @@ export function statsViewModel(input: {
         goalId: goal.id,
         title: goal.title,
         completedAt: goal.completedAt as string,
-        day: formatStatsDay(goal.completedAt as string),
+        day: formatShortDate((goal.completedAt as string).slice(0, 10)),
       })
     }
 
