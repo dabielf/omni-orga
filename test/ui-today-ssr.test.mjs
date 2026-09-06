@@ -119,7 +119,7 @@ before(() => {
   store.createTask({ title: 'Price the flights', parentId: blockedLater.id })
 
   store.close()
-  fixture = { blockedLater, epsilon, gHome, gQuiet, gWork }
+  fixture = { blockedTodayId: blockedToday.id, blockedLater, epsilon, gHome, gQuiet, gWork }
 })
 
 after(() => {
@@ -157,24 +157,10 @@ test('today renders exactly the available tasks scheduled today', async () => {
 
   // Day clearing rules: blocked-today lost its day; future blocked kept it.
   const store = createDomainStore(databasePath)
-  assert.equal(store.getTask(blockedTodayId()).scheduledDay, null)
+  assert.equal(store.getTask(fixture.blockedTodayId).scheduledDay, null)
   assert.equal(store.getTask(fixture.blockedLater.id).scheduledDay, tomorrow)
   store.close()
 })
-
-// The blocked-today task id is not worth threading through the fixture;
-// look it up by its stable title in the store.
-function blockedTodayId() {
-  const store = createDomainStore(databasePath)
-  try {
-    return store
-      .listTasks({ includeArchived: true })
-      .find((task) => task.title === 'Paint the walls').id
-  } finally {
-    store.close()
-  }
-}
-
 
 test('a Today task that becomes blocked mid-day leaves the page', async () => {
   // Seed a fresh task on Today, then block it after the page has shown it.
