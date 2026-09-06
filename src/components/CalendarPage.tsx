@@ -6,6 +6,7 @@ import type { Task } from '../domain/store'
 import { calendarGrid, moveDays, poolTasks } from '../lib/calendarView'
 import { formatDay, formatShortDate } from '../lib/tasksView'
 import '../calendar-stats.css'
+import { ancestorDeadline } from './ScheduleMenu'
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -94,7 +95,14 @@ function CalendarDialog({ label, onClose, children }: { label: string; onClose: 
     dialog.showModal()
     return () => { dialog.close(); if (trigger?.isConnected) trigger.focus() }
   }, [])
-  return <dialog ref={ref} className="cal-pop" aria-label={label} onCancel={event => { event.preventDefault(); onClose() }} onClick={event => {
+  return <dialog ref={ref} className="cal-pop" aria-label={label} onKeyDown={event => {
+    if (event.key !== 'Tab') return
+    const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex="0"]'))
+      .filter(element => element.getClientRects().length > 0)
+    const first = controls[0], last = controls.at(-1)
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
+  }} onCancel={event => { event.preventDefault(); onClose() }} onClick={event => {
     if (event.target === event.currentTarget) {
       const box = event.currentTarget.getBoundingClientRect()
       if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) onClose()
@@ -108,18 +116,11 @@ function MovePopover({ task, tasks, today, apply, onClose }: {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const saving = useRef(false)
-  // A child also respects every unpassed deadline above it.
-  let deadline = task.deadline
-  let parentId = task.parentId
-  const visited = new Set<string>()
-  while (parentId && !visited.has(parentId)) {
-    visited.add(parentId)
-    const parent = tasks.find(item => item.id === parentId)
-    if (!parent) break
-    if (parent.deadline && parent.deadline >= today && (!deadline || deadline < today || parent.deadline < deadline)) deadline = parent.deadline
-    parentId = parent.parentId
-  }
-  const days = moveDays(today, { ...task, deadline })
+  const inherited = ancestorDeadline(task, tasks)
+  const deadline = task.deadline
+  const days = moveDays(today, task).map(day => inherited && day.day > inherited
+    ? { ...day, disabled: true, reason: `After parent deadline ${inherited}` }
+    : day)
   const save = async (day?: string) => {
     if (saving.current) return
     saving.current = true; setPending(true); setError(null)
@@ -142,6 +143,7 @@ function MovePopover({ task, tasks, today, apply, onClose }: {
         onClick={() => void save(day)}>{Number(day.slice(8))}</button>)}
     </div>
     {task.blocked && <p className="cal-pop-hint">Blocked tasks cannot be planned for today.</p>}
+    {inherited && <p className="cal-pop-hint">The parent deadline is {formatShortDate(inherited)}. Later days are unavailable.</p>}
     {deadline && deadline >= today && <p className="cal-pop-hint">Days after {formatShortDate(deadline)} are unavailable.</p>}
     {pending && <p role="status">Saving…</p>}
     {error && <p className="cal-error" role="alert">{error}</p>}

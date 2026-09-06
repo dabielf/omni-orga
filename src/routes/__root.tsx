@@ -4,7 +4,7 @@ import {
   createRootRouteWithContext,
   useRouter,
 } from '@tanstack/react-router'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 
 import { AppShell, EmptyState, Page } from '../components/AppShell'
 import type { ViewContext } from '../lib/loadFreshData'
@@ -21,21 +21,19 @@ export const Route = createRootRouteWithContext<ViewContext>()({
   }),
   notFoundComponent: NotFoundPage,
   errorComponent: LoadErrorPage,
-  pendingComponent: LoadingPage,
-  pendingMs: 200,
   shellComponent: RootDocument,
 })
 
-function LoadingPage() {
-  return <AppShell><p role="status">Loading…</p></AppShell>
-}
-
 function LoadErrorPage() {
   const router = useRouter()
+  const [retrying, setRetrying] = useState(false)
   return (
     <AppShell><Page title="Could not load">
       <p role="alert">Check your connection and try again.</p>
-      <button type="button" className="primary-btn" onClick={() => void router.invalidate()}>Try again</button>
+      <button type="button" className="primary-btn" disabled={retrying} onClick={async () => {
+        setRetrying(true)
+        try { await router.invalidate() } finally { setRetrying(false) }
+      }}>{retrying ? 'Retrying…' : 'Try again'}</button>
     </Page></AppShell>
   )
 }

@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import '../shared-states.css'
 
 /** Keep Undo usable inside a modal, and give focused readers time to act. */
-export function Notice({ message, onDismiss, children }: {
+export function Notice({ message, onDismiss, children, role = 'status' }: {
   message: string
-  onDismiss: () => void
+  onDismiss?: () => void
+  role?: 'status' | 'alert'
   children?: ReactNode
 }) {
   const [hovered, setHovered] = useState(false)
@@ -23,11 +25,11 @@ export function Notice({ message, onDismiss, children }: {
     return () => observer.disconnect()
   }, [])
   useEffect(() => {
-    if (hovered || focused) return
-    const timer = setTimeout(() => dismiss.current(), 6000)
+    if (hovered || focused || !onDismiss) return
+    const timer = setTimeout(() => dismiss.current?.(), 6000)
     return () => clearTimeout(timer)
-  }, [message, hovered, focused])
-  const notice = <div className="notice-chip" role="status"
+  }, [message, hovered, focused, Boolean(onDismiss)])
+  const notice = <div className="notice-chip" role={role} data-modal={dialog ? "true" : undefined}
     onPointerEnter={() => setHovered(true)} onPointerLeave={() => setHovered(false)}
     onFocus={() => setFocused(true)} onBlur={event => {
       if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(false)

@@ -15,16 +15,17 @@ import { toggleTaskComplete } from './taskActions'
 import { useTasksUi } from './tasksContext'
 import './task-sheets.css'
 
+type LinkDraft = { value: string; error: string }
 type CreateDraft = {
   name: string; goalIds: string[]; addToToday: boolean; ideal: string | null
-  deadline: string | null; repeatable: boolean; notes: string; links: string[]
+  deadline: string | null; repeatable: boolean; notes: string; links: string[]; linkDraft: LinkDraft
 }
 let createDraft: CreateDraft | null = null
 let creating = false
 const createListeners = new Set<() => void>()
 export function loadCreateDraft(presetGoalId?: string): CreateDraft {
   return createDraft ??= { name: '', goalIds: presetGoalId ? [presetGoalId] : [],
-    addToToday: false, ideal: null, deadline: null, repeatable: false, notes: '', links: [] }
+    addToToday: false, ideal: null, deadline: null, repeatable: false, notes: '', links: [], linkDraft: { value: '', error: '' } }
 }
 
 function SheetFrame({ onClose, children, label }: {
@@ -97,15 +98,15 @@ function GoalChips({ goalIds, onChange, busy = false, inherited = false }: {
   </div>
 }
 
-function LinkEditor({ links, onChange, disabled = false }: {
+function LinkEditor({ links, onChange, draft, onDraftChange, disabled = false }: {
   links: string[]; onChange?: (links: string[]) => Promise<boolean> | boolean; disabled?: boolean
+  draft: LinkDraft; onDraftChange: (patch: Partial<LinkDraft>) => void
 }) {
-  const [value, setValue] = useState('')
-  const [error, setError] = useState('')
+  const { value, error } = draft
   const input = useRef<HTMLInputElement>(null)
   const add = async () => {
-    if (!validUrl(value.trim())) { setError('Enter a full http or https URL.'); input.current?.focus(); return }
-    if (await onChange?.([...links, value.trim()])) { setValue(''); setError('') }
+    if (!validUrl(value.trim())) { onDraftChange({ error: 'Enter a full http or https URL.' }); input.current?.focus(); return }
+    if (await onChange?.([...links, value.trim()])) { onDraftChange({ value: '', error: '' }) }
   }
   return <div className="field"><span className="field-label">Links</span>
     <div className="task-external-links">{links.map((url, i) => <div key={`${url}-${i}`}>
@@ -115,7 +116,7 @@ function LinkEditor({ links, onChange, disabled = false }: {
     </div>)}</div>
     {onChange ? <div className="add-inline"><input ref={input} type="url" value={value}
       placeholder="Add a URL, one at a time" aria-label="New URL" aria-invalid={Boolean(error)}
-      disabled={disabled} onChange={event => { setValue(event.target.value); setError('') }}
+      disabled={disabled} onChange={event => onDraftChange({ value: event.target.value, error: '' })}
       onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void add() } }} />
       <button type="button" className="go-btn" disabled={disabled} onClick={() => void add()}>Add</button>
     </div> : null}<ErrorText>{error}</ErrorText>
@@ -192,7 +193,7 @@ export function CreateSheet({ onClose }: { onClose: () => void }) {
       <p className="field-hint">A fresh copy is created after each completion.</p>
       <label className="field"><span className="field-label">Notes</span><textarea value={draft.notes} rows={3}
         disabled={saving} onChange={event => patch({ notes: event.target.value })} /></label>
-      <LinkEditor links={draft.links} disabled={saving} onChange={links => { patch({ links }); return true }} />
+      <LinkEditor links={draft.links} draft={draft.linkDraft} onDraftChange={changes => patch({ linkDraft: { ...draft.linkDraft, ...changes } })} disabled={saving} onChange={links => { patch({ links }); return true }} />
     </MoreOptions>
     <ErrorText>{error}</ErrorText>
     <div className="form-foot"><button type="button" className="primary-btn" disabled={saving} onClick={() => void create()}>{saving ? 'Creating…' : 'Create task'}</button>
@@ -203,11 +204,11 @@ export function CreateSheet({ onClose }: { onClose: () => void }) {
 
 // Session memory keeps unsaved fields recoverable even if the sheet closes during a request.
 type Edits = { title: string; notes: string }
-type EditBuffer = { values: Edits; pending: Partial<Edits>; saving: boolean; error: string; version: number; listeners: Set<() => void> }
+type EditBuffer = { values: Edits; linkDraft: LinkDraft; pending: Partial<Edits>; saving: boolean; error: string; version: number; listeners: Set<() => void> }
 const edits = new Map<string, EditBuffer>()
 function useTaskEdits(task: Task) {
   const { applyData } = useTasksUi()
-  const buffer = edits.get(task.id) ?? { values: { title: task.title, notes: task.notes }, pending: {}, saving: false, error: '', version: 0, listeners: new Set<() => void>() }
+  const buffer = edits.get(task.id) ?? { values: { title: task.title, notes: task.notes }, linkDraft: { value: '', error: '' }, pending: {}, saving: false, error: '', version: 0, listeners: new Set<() => void>() }
   if (typeof window !== 'undefined') edits.set(task.id, buffer)
   const emit = () => { buffer.version++; buffer.listeners.forEach(fn => fn()) }
   useSyncExternalStore(listener => { buffer.listeners.add(listener); return () => { buffer.listeners.delete(listener) } }, () => buffer.version, () => buffer.version)
@@ -243,7 +244,8 @@ function useTaskEdits(task: Task) {
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(() => void flush(), 600)
   }
-  return { buffer, change, flush }
+  const changeLinkDraft = (patch: Partial<LinkDraft>) => { buffer.linkDraft = { ...buffer.linkDraft, ...patch }; emit() }
+  return { buffer, change, flush, changeLinkDraft }
 }
 
 function AddSubtaskInput({ parentId, onDone }: { parentId: string; onDone: () => void }) {
@@ -345,7 +347,7 @@ export function TaskSheet({ taskId, onClose }: { taskId: string; onClose: () => 
 }
 function TaskSheetBody({ task, onClose }: { task: Task; onClose: () => void }) {
   const { data, applyData, notify } = useTasksUi()
-  const { buffer, change, flush } = useTaskEdits(task)
+  const { buffer, change, flush, changeLinkDraft } = useTaskEdits(task)
   const [moreOpen, setMoreOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
@@ -413,7 +415,7 @@ function TaskSheetBody({ task, onClose }: { task: Task; onClose: () => void }) {
     <MoreOptions open={moreOpen} toggle={() => setMoreOpen(!moreOpen)} notes={buffer.values.notes} links={task.externalLinks}>
       <label className="field"><span className="field-label">Notes</span><textarea value={buffer.values.notes} rows={3} readOnly={!active}
         onChange={event => change('notes', event.target.value)} onBlur={() => void flush()} /></label>
-      <LinkEditor links={task.externalLinks} disabled={busy} onChange={active ? links => run(() => updateTaskAction({ data: { taskId: task.id, externalLinks: links } })) : undefined} />
+      <LinkEditor links={task.externalLinks} draft={buffer.linkDraft} onDraftChange={changeLinkDraft} disabled={busy} onChange={active ? links => run(() => updateTaskAction({ data: { taskId: task.id, externalLinks: links } })) : undefined} />
     </MoreOptions>
     <h3 className="sheet-section">Subtasks</h3><SubtaskTree parentId={task.id} readOnly={!active} />
     {latest ? <a className="plain-action" href={tasksUrl({}) + '/' + latest.id}>Open latest copy</a> : null}

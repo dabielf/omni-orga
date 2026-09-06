@@ -1,5 +1,6 @@
 import { Link, useRouter, useRouterState } from '@tanstack/react-router'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
+import { Notice } from './Notice'
 
 const pages = [
   { to: '/', label: 'Today', icon: <><circle cx="12" cy="12" r="3.5" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></> },
@@ -26,6 +27,7 @@ function navLinks() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter()
+  const [retrying, setRetrying] = useState(false)
   const refreshError = useRouterState({
     select: state => state.matches.some(match =>
       (match.loaderData as { refreshError?: boolean } | undefined)?.refreshError),
@@ -43,12 +45,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
       <main className="app-main">{children}</main>
       {refreshError ? (
-        <div className="notice-chip" role="alert">
-          <span>Could not refresh. Shown data may be old.</span>
-          <button type="button" className="notice-undo" onClick={() => void router.invalidate()}>
-            Try again
+        <Notice message="Could not refresh. Shown data may be old." role="alert">
+          <button type="button" className="notice-undo" disabled={retrying} onClick={async () => {
+            setRetrying(true)
+            try { await router.invalidate() } finally { setRetrying(false) }
+          }}>
+            {retrying ? 'Retrying…' : 'Try again'}
           </button>
-        </div>
+        </Notice>
       ) : null}
     </div>
   )
@@ -65,4 +69,8 @@ export function Page({ title, children }: { title: string; children: ReactNode }
 
 export function EmptyState({ children }: { children: ReactNode }) {
   return <div className="empty-state">{children}</div>
+}
+
+export function LoadingPage() {
+  return <AppShell><div className="page loading-page" aria-busy="true"><p role="status">Loading…</p></div></AppShell>
 }

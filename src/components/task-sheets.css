@@ -56,3 +56,5 @@ dialog.task-sheet-dialog::backdrop { background: rgb(36 56 47 / 18%); }
 .task-sheet .when-chip { min-height: 44px; padding: 12px 14px; border: 0; border-radius: 6px; background: #F0F4F0; color: #285B40; font-size: 14px; }
 .task-sheet .state-label { padding: 0; border: 0; background: none; color: #5D6E63; font-size: 14px; }
 .task-sheet .task-delete-action { border: 0; background: none; padding: 12px 14px; min-height: 44px; }
+
+.task-sheet > * { flex-shrink: 0; }

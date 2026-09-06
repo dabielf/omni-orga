@@ -1,5 +1,7 @@
 import { createRouter, parseSearchWith, type AnyRouter } from '@tanstack/react-router'
 
+import { LoadingPage } from './components/AppShell'
+
 import { routeTree } from './routeTree.gen'
 
 /**
@@ -34,6 +36,9 @@ export function getRouter() {
     parseSearch,
     // Wait for fresh data when revisiting a cached page.
     defaultStaleReloadMode: 'blocking',
+    defaultPendingComponent: LoadingPage,
+    defaultPendingMs: 200,
+    defaultPendingMinMs: 0,
   })
   return router
 }
