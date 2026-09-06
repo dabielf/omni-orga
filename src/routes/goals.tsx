@@ -1,6 +1,6 @@
 import { loadFreshData } from '../lib/loadFreshData'
 import { Outlet, createFileRoute, useRouter } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Notice } from '../components/Notice'
 
 import { AppShell } from '../components/AppShell'
@@ -19,7 +19,9 @@ function GoalsLayout() {
   const refresh = () => {
     void router.invalidate()
   }
+  const noticeId = useRef(0)
   const [notice, setNotice] = useState<{
+    id: number
     message: string
     actionLabel?: string
     undo?: () => void
@@ -31,7 +33,7 @@ function GoalsLayout() {
     message: string,
     options?: { actionLabel?: string; undo?: () => void },
   ) => {
-    setNotice({ message, actionLabel: options?.actionLabel, undo: options?.undo })
+    setNotice({ id: ++noticeId.current, message, actionLabel: options?.actionLabel, undo: options?.undo })
   }
 
   const toggleCollapsed = (goalId: string) => {
@@ -60,7 +62,7 @@ function GoalsLayout() {
           <GoalSheet onClose={() => setCreateOpen(false)} />
         ) : null}
         {notice ? (
-          <Notice message={notice.message} onDismiss={() => setNotice(null)}>
+          <Notice key={notice.id} message={notice.message} onDismiss={() => setNotice(null)}>
             {notice.undo ? (
               <button
                 type="button"

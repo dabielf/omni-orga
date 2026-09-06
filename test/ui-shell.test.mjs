@@ -77,12 +77,12 @@ test('unknown records and pages give factual return paths', async () => {
   const missingGoal = await fetch(`${url}/goals/g_missing`)
   const goalHtml = await missingGoal.text()
   assert.match(goalHtml, />Goal not found</)
-  assert.match(goalHtml, /href="\/goals"[^>]*>Goals</)
+  assert.match(goalHtml, /href="\/goals"[^>]*>Open Goals</)
 
   const missingTask = await fetch(`${url}/tasks/t_missing`)
   const taskHtml = await missingTask.text()
   assert.match(taskHtml, />Task not found</)
-  assert.match(taskHtml, /href="\/tasks"[^>]*>Tasks</)
+  assert.match(taskHtml, /href="\/tasks"[^>]*>Open Tasks</)
 
   const unknown = await fetch(`${url}/not-a-page`)
   const unknownHtml = await unknown.text()

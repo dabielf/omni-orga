@@ -14,6 +14,7 @@ import { CompleteCircle, ScheduleMenu, ancestorDeadline } from './ScheduleMenu'
 import { toggleTaskComplete } from './taskActions'
 import { useTasksUi } from './tasksContext'
 import './task-sheets.css'
+import { keepDialogFocus } from './dialogFocus'
 
 type LinkDraft = { value: string; error: string }
 type CreateDraft = {
@@ -36,22 +37,16 @@ function SheetFrame({ onClose, children, label }: {
     const trigger = document.activeElement
     const dialog = ref.current
     dialog?.showModal()
+    dialog?.addEventListener('keydown', keepDialogFocus)
     dialog?.querySelector<HTMLElement>('[data-initial-focus]')?.focus()
     return () => {
+      dialog?.removeEventListener('keydown', keepDialogFocus)
       dialog?.close()
       if (trigger instanceof HTMLElement && trigger.isConnected) trigger.focus()
     }
   }, [])
   return (
     <dialog ref={ref} className="sheet-overlay task-sheet-dialog" role="dialog" aria-modal="true" aria-label={label}
-      onKeyDown={event => {
-        if (event.key !== 'Tab') return
-        const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), textarea:not(:disabled), select:not(:disabled), summary, [tabindex="0"]'))
-          .filter(element => element.getClientRects().length > 0)
-        const first = controls[0], last = controls.at(-1)
-        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
-        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
-      }}
       onCancel={event => { event.preventDefault(); onClose() }}
       onClick={event => { if (event.target === event.currentTarget) onClose() }}>
       <div className="sheet task-sheet">

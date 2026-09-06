@@ -221,7 +221,7 @@ test('unknown goals keep the factual not-found state', async () => {
 
   assert.match(html, /<h1[^>]*>Goal not found<\/h1>/)
   assert.match(html, /This goal does not exist\./)
-  assert.match(html, /href="\/goals"[^>]*>Goals</)
+  assert.match(html, /href="\/goals"[^>]*>Open Goals</)
 })
 
 test('full priority cap disables further toggles with the factual message', async () => {

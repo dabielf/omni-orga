@@ -241,7 +241,7 @@ test('unplanned detail Schedule is not subject to the row-only hiding rule', asy
 test('unknown tasks keep the factual not-found state', async () => {
   const html = await render('/tasks/t_missing')
   assert.match(html, />Task not found</)
-  assert.match(html, /href="\/tasks"[^>]*>Tasks</)
+  assert.match(html, /href="\/tasks"[^>]*>Open Tasks</)
 })
 
 test('unknown goal ids simply yield the filtered empty state', async () => {

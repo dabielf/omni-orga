@@ -3,6 +3,7 @@ import { Link, Outlet, createFileRoute, useRouter } from '@tanstack/react-router
 import { useRef, useState } from 'react'
 
 import { AppShell } from '../components/AppShell'
+import { Notice } from '../components/Notice'
 import { CreateSheet } from '../components/TaskSheet'
 import { TasksFilters } from '../components/TasksFilters'
 import { TasksRail } from '../components/TasksRail'
@@ -25,18 +26,17 @@ function TasksLayout() {
   }
   const search = Route.useSearch()
   const [notice, setNotice] = useState<{
+    id: number
     message: string
     undo?: () => void
   } | null>(null)
-  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const noticeId = useRef(0)
   const [expandedTrees, setExpandedTrees] = useState<Set<string>>(new Set())
   const [expandedGoals, setExpandedGoals] = useState<Set<string>>(new Set())
   const [createOpen, setCreateOpen] = useState(false)
 
   const notify = (message: string, undo?: () => void) => {
-    setNotice({ message, undo })
-    if (noticeTimer.current) clearTimeout(noticeTimer.current)
-    noticeTimer.current = setTimeout(() => setNotice(null), 6000)
+    setNotice({ id: ++noticeId.current, message, undo })
   }
 
   const ui: TasksUi = {
@@ -85,8 +85,7 @@ function TasksLayout() {
             <CreateSheet onClose={() => setCreateOpen(false)} />
           ) : null}
           {notice ? (
-            <div className="notice-chip" role="status">
-              <span>{notice.message}</span>
+            <Notice key={notice.id} message={notice.message} onDismiss={() => setNotice(null)}>
               {notice.undo ? (
                 <button
                   type="button"
@@ -99,7 +98,7 @@ function TasksLayout() {
                   Undo
                 </button>
               ) : null}
-            </div>
+            </Notice>
           ) : null}
         </div>
       </AppShell>

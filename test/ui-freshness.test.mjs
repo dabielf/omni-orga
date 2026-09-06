@@ -39,7 +39,7 @@ async function visible(locator) { await locator.waitFor({ state: 'visible', time
 test('saved tasks stay fresh on repeated visits and browser history', async () => {
   await page.goto(url)
   await nav('Goals')
-  await page.getByRole('button', { name: 'Create your first goal', exact: true }).click()
+  await page.getByRole('button', { name: 'New goal', exact: true }).click()
   await page.getByRole('textbox', { name: 'Goal name' }).fill('Fresh goal')
   await page.getByRole('button', { name: 'Create goal', exact: true }).click()
   await visible(page.getByRole('link', { name: 'Fresh goal', exact: true }))
@@ -112,7 +112,7 @@ test('saved tasks stay fresh on repeated visits and browser history', async () =
   await nav('Goals')
   await page.getByRole('link', { name: 'Fresh goal', exact: true }).click()
   await page.getByRole('button', { name: 'Priority', exact: true }).click()
-  await page.waitForFunction(() => document.querySelector('.goal-facts .flag-btn')?.getAttribute('aria-pressed') === 'true')
+  await page.waitForFunction(() => document.querySelector('.goal-priority-btn')?.getAttribute('aria-pressed') === 'true')
   await nav('Today')
   await visible(page.getByRole('link', { name: 'Fresh goal', exact: true }))
 })

@@ -11,32 +11,31 @@ import {
 import type { Goal, Task } from '../domain/store'
 import { coverageSplit, goalNames, longDay } from '../lib/todayView'
 import { AppShell } from './AppShell'
+import { Notice } from './Notice'
 
 /** How long a press must hold before a drag starts. */
 const HOLD_MS = 350
 
 export function TodayPage({ initial: data }: { initial: TodayData }) {
   const router = useRouter()
-  const [notice, setNotice] = useState<string | null>(null)
-  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [notice, setNotice] = useState<{ id: number; message: string } | null>(null)
+  const noticeId = useRef(0)
+  const notify = (message: string) => setNotice({ id: ++noticeId.current, message })
   const openListRef = useRef<HTMLUListElement>(null)
   const cancelDrag = useRef<(() => void) | null>(null)
   const pending = useRef(new Set<string>())
   const [saving, setSaving] = useState(false)
   useEffect(() => () => {
     cancelDrag.current?.()
-    if (noticeTimer.current) clearTimeout(noticeTimer.current)
   }, [])
 
   const apply = async (result: TodayActionResult) => {
     if (result.ok) {
-      await router.invalidate().catch(() => setNotice('Could not refresh. Try again.'))
+      await router.invalidate().catch(() => notify('Could not refresh. Try again.'))
       return
     }
     // Success is the state change itself; only failures say anything.
-    setNotice(result.message)
-    if (noticeTimer.current) clearTimeout(noticeTimer.current)
-    noticeTimer.current = setTimeout(() => setNotice(null), 6000)
+    notify(result.message)
   }
 
   const run = async (key: string, action: () => Promise<TodayActionResult>) => {
@@ -108,9 +107,7 @@ export function TodayPage({ initial: data }: { initial: TodayData }) {
         )}
       </div>
       {notice ? (
-        <div className="notice-chip" role="status">
-          <span>{notice}</span>
-        </div>
+        <Notice key={notice.id} message={notice.message} onDismiss={() => setNotice(null)} />
       ) : null}
     </AppShell>
   )
@@ -236,6 +233,7 @@ function goalLink(goal: Goal) {
     <Link
       key={goal.id}
       className="today-goal"
+      aria-label={goal.title}
       to="/tasks"
       search={{ goal: goal.id, available: '1' }}
     >

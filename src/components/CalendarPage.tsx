@@ -7,6 +7,7 @@ import { calendarGrid, moveDays, poolTasks } from '../lib/calendarView'
 import { formatDay, formatShortDate } from '../lib/tasksView'
 import '../calendar-stats.css'
 import { ancestorDeadline } from './ScheduleMenu'
+import { keepDialogFocus } from './dialogFocus'
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -93,16 +94,10 @@ function CalendarDialog({ label, onClose, children }: { label: string; onClose: 
     const dialog = ref.current!
     const trigger = document.activeElement as HTMLElement | null
     dialog.showModal()
-    return () => { dialog.close(); if (trigger?.isConnected) trigger.focus() }
+    dialog.addEventListener('keydown', keepDialogFocus)
+    return () => { dialog.removeEventListener('keydown', keepDialogFocus); dialog.close(); if (trigger?.isConnected) trigger.focus() }
   }, [])
-  return <dialog ref={ref} className="cal-pop" aria-label={label} onKeyDown={event => {
-    if (event.key !== 'Tab') return
-    const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex="0"]'))
-      .filter(element => element.getClientRects().length > 0)
-    const first = controls[0], last = controls.at(-1)
-    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
-    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
-  }} onCancel={event => { event.preventDefault(); onClose() }} onClick={event => {
+  return <dialog ref={ref} className="cal-pop" aria-label={label} onCancel={event => { event.preventDefault(); onClose() }} onClick={event => {
     if (event.target === event.currentTarget) {
       const box = event.currentTarget.getBoundingClientRect()
       if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) onClose()
