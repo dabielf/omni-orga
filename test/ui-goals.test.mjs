@@ -193,3 +193,34 @@ test('the client cap hint matches the domain PRIORITY_LIMIT message', async () =
     await rm(directory, { recursive: true, force: true })
   }
 })
+
+test('archived goal details preserve archived descendants and their completed history', () => {
+  const archived = '2026-09-06T10:00:00.000Z'
+  const detail = goalDetailFromData({
+    goals: [],
+    archivedGoals: [goal({id:'parent', archivedAt:archived}), goal({id:'child', parentId:'parent', archivedAt:archived})],
+    progress: {parent:progress()},
+    tasks: [task({id:'done', goalIds:['child'], completedAt:archived})],
+  }, 'parent')
+  assert.deepEqual(detail.subgoals.map(goal => goal.id), ['child'])
+  assert.deepEqual(detail.tasks.map(entry => entry.task.id), ['done'])
+})
+
+test('parent choices explain inactive, incompatible and third-level destinations', async () => {
+  const { goalParentOptions } = await import('../src/lib/goalsView.ts')
+  const goals = [goal({id:'current', kind:'ongoing'}), goal({id:'once'}), goal({id:'ongoing', kind:'ongoing'}), goal({id:'done', completedAt:'date'}), goal({id:'sub', parentId:'ongoing'})]
+  const options = goalParentOptions(goals, 'ongoing', 'current')
+  assert.deepEqual(options.filter(option => !option.reason).map(option => option.id), [null, 'ongoing'])
+  assert.match(options.find(option => option.id === 'once').reason, /one-shot/i)
+  assert.match(options.find(option => option.id === 'done').reason, /inactive/i)
+  assert.equal(options.some(option => option.id === 'current' || option.id === 'sub'), false)
+  assert.ok(goalParentOptions([...goals, goal({id:'child',parentId:'current'})], 'ongoing', 'current').filter(option => option.id).every(option => option.reason))
+})
+
+test('removal input accepts independent dispositions and rejects malformed payloads', async () => {
+  const { validateGoalRemoval } = await import('../src/domain/goalInput.ts')
+  const parsed = validateGoalRemoval({goalId:'g', linkedTasks:{one:{action:'keep_active'}, two:{action:'link',goalId:'other'}, three:{action:'archive'}}})
+  assert.equal(parsed.linkedTasks.two.goalId, 'other')
+  assert.equal(parsed.linkedTasks.three.action, 'archive')
+  for (const payload of [null, [], {}, {goalId:3}, {goalId:'g',linkedTasks:[]}, {goalId:'g',linkedTasks:{t:{action:'delete'}}}, {goalId:'g',linkedTasks:{t:{action:'link',goalId:''}}}]) assert.throws(() => validateGoalRemoval(payload))
+})

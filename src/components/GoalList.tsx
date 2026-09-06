@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent, RefObject } from 'react'
 
 import {
-  archiveGoalAction,
   moveGoalAction,
   reorderGoalsAction,
   restoreGoalAction,
@@ -14,10 +13,13 @@ import {
   PRIORITY_LIMIT_MESSAGE,
   priorityInUse,
   topLevelGoals,
+  goalParentOptions,
 } from '../lib/goalsView'
 import { formatShortDate } from '../lib/tasksView'
-import { tasksUrl } from '../lib/urlState'
 import { useGoalsUi } from './goalsContext'
+import { GoalDialog } from './GoalDialog'
+import { GoalRemovalDialog } from './GoalRemovalDialog'
+import './goals-redesign.css'
 
 const LONG_PRESS_MS = 350
 
@@ -58,45 +60,6 @@ function ChevronIcon() {
   )
 }
 
-function MoveIcon() {
-  return (
-    <svg
-      width={14}
-      height={14}
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.5}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M3.5 13.5V8a3 3 0 0 1 3-3h6" />
-      <path d="M10 2.5L12.5 5 10 7.5" />
-    </svg>
-  )
-}
-
-function ArchiveIcon() {
-  return (
-    <svg
-      width={14}
-      height={14}
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.5}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="2.5" y="3" width="11" height="3" rx="0.5" />
-      <path d="M4 6v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V6" />
-      <path d="M6.5 8.5h3" />
-    </svg>
-  )
-}
-
 /** Factual row progress: bar + text for one-shot, text for ongoing. */
 export function GoalProgressView({
   progress,
@@ -122,86 +85,35 @@ export function GoalProgressView({
   return <span className="goal-count">{progress.text}</span>
 }
 
-type MoveOption = { goal: Goal; anchor: DOMRect }
+type MoveOption = { goal: Goal }
 
-function MovePopover({
-  goal,
-  anchor,
-  onClose,
-}: {
-  goal: Goal
-  anchor: DOMRect
-  onClose: () => void
-}) {
+function MovePopover({ goal, onClose }: { goal: Goal; onClose: () => void }) {
   const { data, applyData, notify } = useGoalsUi()
-  const popoverRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const onPointerDown = (event: MouseEvent) => {
-      if (!popoverRef.current?.contains(event.target as Node)) onClose()
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
-    }
-    document.addEventListener('mousedown', onPointerDown)
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('mousedown', onPointerDown)
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [onClose])
-
-  const options: Array<{
-    label: string
-    parentId: string | null
-    disabled?: boolean
-  }> = []
-  if (goal.parentId) options.push({ label: 'Top level', parentId: null })
-  else
-    options.push({
-      label: 'Top level (current)',
-      parentId: null,
-      disabled: true,
-    })
-  for (const top of topLevelGoals(data.goals)) {
-    if (top.id === goal.id || top.id === goal.parentId) continue
-    options.push({ label: top.title, parentId: top.id })
-  }
-
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const pending = useRef(false)
+  const mounted = useRef(true)
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
+  const options = goalParentOptions([...data.goals, ...data.archivedGoals], goal.kind, goal.id)
   const move = async (parentId: string | null) => {
-    const result = await moveGoalAction({
-      data: { goalId: goal.id, parentId },
-    })
-    if (result.ok) {
-      applyData(result)
-      onClose()
-    } else {
-      notify(result.message)
-    }
+    if (pending.current) return
+    pending.current = true; setSaving(true); setError('')
+    try {
+      const result = await moveGoalAction({ data: { goalId: goal.id, parentId } })
+      if (result.ok) { applyData(result); if (mounted.current) onClose(); notify('Goal moved.') }
+      else setError(result.message)
+    } catch { setError('The goal was not moved. Try again.') }
+    finally { pending.current = false; setSaving(false) }
   }
-
-  return (
-    <div
-      className="move-popover"
-      ref={popoverRef}
-      style={{
-        top: anchor.bottom + 6,
-        left: Math.max(12, Math.min(anchor.left, window.innerWidth - 240)),
-      }}
-    >
-      <div className="move-popover-title">Move to</div>
-      {options.map((option) => (
-        <button
-          key={option.label}
-          type="button"
-          disabled={option.disabled}
-          onClick={() => void move(option.parentId)}
-        >
-          {option.label}
-        </button>
-      ))}
+  return <GoalDialog title={`Move ${goal.title}`} onClose={onClose} compact>
+    <div className="goal-dialog-body goal-move-options">
+      {options.map(option => <div key={option.id ?? 'top'}>
+        <button type="button" className="secondary-btn" disabled={saving || !!option.reason || option.id === goal.parentId} onClick={() => void move(option.id)}>{option.title}{option.id === goal.parentId ? ' (current)' : ''}</button>
+        {option.reason ? <p className="goal-field-hint">{option.reason}</p> : null}
+      </div>)}
+      {error ? <p role="alert" className="goal-error">{error}</p> : null}
     </div>
-  )
+  </GoalDialog>
 }
 
 type GoalDragProps = {
@@ -224,19 +136,26 @@ function useGoalDrag(): GoalDragProps & {
   const dropBeforeRef = useRef<string | null>(null)
   const dropAtEndRef = useRef(false)
   const justDraggedRef = useRef<string | null>(null)
+  const cancelRef = useRef<(() => void) | null>(null)
+  const pending = useRef(false)
+  useEffect(() => () => cancelRef.current?.(), [])
 
   const onPointerDown = (
     event: ReactPointerEvent<HTMLElement>,
     goalId: string,
   ) => {
+    if (pending.current) return
+    cancelRef.current?.()
     if (event.pointerType === 'mouse' && event.button !== 0) return
     const target = event.target as HTMLElement
-    if (target.closest('a, button, input, select, textarea, label')) return
+    if (target.closest('a, button, input, select, textarea, label, summary')) return
     const row = event.currentTarget.closest(
       '[data-goal-row]',
     ) as HTMLElement | null
     if (!row) return
 
+    dropBeforeRef.current = null
+    dropAtEndRef.current = false
     const startX = event.clientX
     const startY = event.clientY
     const listeners: Array<() => void> = []
@@ -250,10 +169,14 @@ function useGoalDrag(): GoalDragProps & {
     const cancel = () => {
       clearTimeout(timer)
       removeListeners()
+      setDropBeforeId(null)
+      setDropAtEnd(false)
+      justDraggedRef.current = null
       setDraggingId((current) => (current === goalId ? null : current))
       document.body.classList.remove('is-goal-dragging')
     }
 
+    cancelRef.current = cancel
     timer = window.setTimeout(() => {
       engaged = true
       justDraggedRef.current = goalId
@@ -273,7 +196,7 @@ function useGoalDrag(): GoalDragProps & {
       if (!list) return
       const siblings = (
         Array.from(
-          list.querySelectorAll(':scope > [data-goal-row]'),
+          list.querySelectorAll(':scope > [data-goal-row][data-goal-active="true"]'),
         ) as HTMLElement[]
       ).filter((item) => item !== row)
       let before: string | null = null
@@ -292,7 +215,9 @@ function useGoalDrag(): GoalDragProps & {
       setDropAtEnd(atEnd)
     }
 
+    const onKeyDown = (key: KeyboardEvent) => { if (key.key === 'Escape') cancel() }
     const onUp = () => {
+      cancelRef.current = null
       const wasEngaged = engaged
       clearTimeout(timer)
       removeListeners()
@@ -301,11 +226,12 @@ function useGoalDrag(): GoalDragProps & {
       setDropBeforeId(null)
       setDropAtEnd(false)
       if (!wasEngaged) return
+      if (!dropBeforeRef.current && !dropAtEndRef.current) { justDraggedRef.current = null; return }
 
       const list = row.parentElement
       const siblings = (
         Array.from(
-          list?.querySelectorAll(':scope > [data-goal-row]') ?? [],
+          list?.querySelectorAll(':scope > [data-goal-row][data-goal-active="true"]') ?? [],
         ) as HTMLElement[]
       )
         .filter((item) => item !== row)
@@ -317,15 +243,19 @@ function useGoalDrag(): GoalDragProps & {
         const index = siblings.indexOf(dropBeforeRef.current)
         if (index > 0) afterGoalId = siblings[index - 1]
       }
+      pending.current = true
       void (async () => {
-        const result = await reorderGoalsAction({
-          data: { goalId, afterGoalId: afterGoalId },
-        })
-        if (result.ok) applyData(result)
-        else notify(result.message)
+        try {
+          const result = await reorderGoalsAction({ data: { goalId, afterGoalId } })
+          if (result.ok) { applyData(result); notify('Goal reordered.') }
+          else notify(result.message)
+        } catch { notify('The order was not saved. Try again.') }
+        finally { pending.current = false }
       })()
     }
 
+    listeners.push(() => document.removeEventListener('keydown', onKeyDown))
+    document.addEventListener('keydown', onKeyDown)
     listeners.push(() => document.removeEventListener('pointermove', onMove))
     listeners.push(() => document.removeEventListener('pointerup', onUp))
     listeners.push(() => document.removeEventListener('pointercancel', cancel))
@@ -343,164 +273,56 @@ function useGoalDrag(): GoalDragProps & {
   }
 }
 
-function GoalRow({
-  goal,
-  drag,
-  isLastSibling,
-  onOpenMove,
-}: {
+function GoalRow({ goal, drag, isLastSibling, onOpenMove, onArchive }: {
   goal: Goal
   drag: GoalDragProps
   isLastSibling: boolean
   onOpenMove: (option: MoveOption) => void
+  onArchive: (goalId: string) => void
 }) {
   const { data, collapsed, toggleCollapsed, applyData, notify } = useGoalsUi()
-
-  const subs = data.goals.filter((item) => item.parentId === goal.id)
+  const [saving, setSaving] = useState(false)
+  const pending = useRef(false)
+  const subs = data.goals.filter(item => item.parentId === goal.id)
   const isCollapsed = collapsed.has(goal.id)
-  const full = priorityInUse(data.goals) >= 3
-  const capped = full && !goal.priority
+  const inactive = !!(goal.completedAt || goal.archivedAt)
+  const capped = priorityInUse(data.goals) >= 3 && !goal.priority
   const togglePriority = async () => {
-    const result = await setGoalPriorityAction({
-      data: { goalId: goal.id, priority: !goal.priority },
-    })
-    if (result.ok) applyData(result)
-    else notify(result.message)
+    if (pending.current || inactive || capped) return
+    pending.current = true; setSaving(true)
+    try {
+      const result = await setGoalPriorityAction({ data: { goalId: goal.id, priority: !goal.priority } })
+      if (result.ok) applyData(result)
+      else notify(result.message)
+    } catch { notify('Priority was not saved. Try again.') }
+    finally { pending.current = false; setSaving(false) }
   }
-
-  const archive = async () => {
-    const result = await archiveGoalAction({ data: { goalId: goal.id } })
-    if (!result.ok) {
-      notify(result.message)
-      return
-    }
-    applyData(result)
-    notify('Goal archived.', {
-      actionLabel: 'Restore',
-      undo: async () => {
-        const undo = await restoreGoalAction({ data: { goalId: goal.id } })
-        if (undo.ok) applyData(undo)
-        else notify(undo.message)
-      },
-    })
-  }
-
-  const rowClasses = [
-    'goal-row',
-    drag.draggingId === goal.id ? 'is-dragged' : '',
-    drag.dropBeforeId === goal.id ? 'is-drop-before' : '',
-    drag.dropAtEnd && isLastSibling && drag.draggingId !== goal.id
-      ? 'is-drop-end'
-      : '',
-  ]
-    .filter(Boolean)
-    .join(' ')
-
-  return (
-    <li
-      data-goal-row={goal.id}
-      className={subs.length ? 'goal has-subs' : 'goal'}
-    >
-      <div
-        className={rowClasses}
-        onPointerDown={(event) => drag.onPointerDown(event, goal.id)}
-      >
-        {subs.length ? (
-          <button
-            type="button"
-            className="goal-chevron"
-            aria-expanded={!isCollapsed}
-            aria-label={
-              isCollapsed ? `Expand ${goal.title}` : `Collapse ${goal.title}`
-            }
-            onClick={() => toggleCollapsed(goal.id)}
-          >
-            <ChevronIcon />
-          </button>
-        ) : (
-          <span className="goal-chevron" aria-hidden="true" />
-        )}
-        <Link
-          className="goal-name"
-          to="/goals/$goalId"
-          params={{ goalId: goal.id }}
-        >
-          {goal.title}
-        </Link>
-        {goal.priority ? (
-          <span className="flag-mark" aria-label="Priority goal">
-            <FlagIcon />
-          </span>
-        ) : null}
-        <span className="goal-spacer" />
-        <span className="goal-meta">
-          <GoalProgressView progress={data.progress[goal.id]} />
-        </span>
-        <span className="goal-row-actions">
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label="Priority"
-            aria-pressed={goal.priority}
-            aria-disabled={capped || undefined}
-            title={capped ? PRIORITY_LIMIT_MESSAGE : 'Priority'}
-            onClick={() => {
-              if (capped) {
-                notify(PRIORITY_LIMIT_MESSAGE)
-                return
-              }
-              void togglePriority()
-            }}
-          >
-            <FlagIcon />
-          </button>
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label="Move to another place in the hierarchy"
-            onClick={(event) =>
-              onOpenMove({
-                goal,
-                anchor: event.currentTarget.getBoundingClientRect(),
-              })
-            }
-          >
-            <MoveIcon />
-          </button>
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label="Archive"
-            onClick={() => void archive()}
-          >
-            <ArchiveIcon />
-          </button>
-        </span>
+  const rowClasses = ['goal-row', inactive ? 'is-history' : '', drag.draggingId === goal.id ? 'is-dragged' : '', drag.dropBeforeId === goal.id ? 'is-drop-before' : '', drag.dropAtEnd && isLastSibling && drag.draggingId !== goal.id ? 'is-drop-end' : ''].filter(Boolean).join(' ')
+  const progress = data.progress[goal.id]
+  return <li data-goal-row={goal.id} data-goal-active={!inactive} className={subs.length ? 'goal has-subs' : 'goal'}>
+    <div className={rowClasses} onPointerDown={event => { if (!inactive) drag.onPointerDown(event, goal.id) }}>
+      {subs.length ? <button type="button" className="goal-chevron" aria-expanded={!isCollapsed} aria-label={`${isCollapsed ? 'Expand' : 'Collapse'} ${goal.title}`} onClick={() => toggleCollapsed(goal.id)}><ChevronIcon /></button> : <span className="goal-chevron" aria-hidden="true"><FlagIcon size={21} /></span>}
+      <div className="goal-row-copy">
+        <Link className="goal-name" to="/goals/$goalId" params={{goalId:goal.id}}>{goal.title}</Link>
+        <span className="goal-meta">{goal.completedAt ? 'Completed' : goal.kind === 'ongoing' ? 'Ongoing' : 'One-shot'} · <GoalProgressView progress={progress} /></span>
       </div>
-      {subs.length && !isCollapsed ? (
-        <ul className="goal-subgoals">
-          {subs.map((sub, index) => (
-            <GoalRow
-              key={sub.id}
-              goal={sub}
-              drag={drag}
-              isLastSibling={index === subs.length - 1}
-              onOpenMove={onOpenMove}
-            />
-          ))}
-          <li className="goal-tasks-link">
-            <Link to={tasksUrl({ goal: goal.id })}>View tasks</Link>
-          </li>
-        </ul>
-      ) : null}
-    </li>
-  )
+      {!inactive ? <div className="goal-row-actions">
+        <button type="button" className="goal-priority-btn" aria-label="Priority" aria-pressed={goal.priority} aria-disabled={capped || undefined} title={capped ? PRIORITY_LIMIT_MESSAGE : 'Priority'} disabled={saving} onClick={() => { if (capped) notify(PRIORITY_LIMIT_MESSAGE); else void togglePriority() }}>{goal.priority ? 'Priority' : 'Set priority'}</button>
+        <details className="goal-row-menu"><summary aria-label={`More actions for ${goal.title}`}>⋯</summary><div>
+          <button type="button" onClick={event => { event.currentTarget.closest('details')?.querySelector('summary')?.focus(); event.currentTarget.closest('details')?.removeAttribute('open'); onOpenMove({goal}) }}>Move…</button>
+          <button type="button" aria-label="Archive" onClick={event => { event.currentTarget.closest('details')?.querySelector('summary')?.focus(); event.currentTarget.closest('details')?.removeAttribute('open'); onArchive(goal.id) }}>Archive…</button>
+        </div></details>
+      </div> : null}
+    </div>
+    {subs.length && !isCollapsed ? <ul className="goal-subgoals">{subs.map((sub,index) => <GoalRow key={sub.id} goal={sub} drag={drag} isLastSibling={index === subs.length-1} onOpenMove={onOpenMove} onArchive={onArchive} />)}</ul> : null}
+  </li>
 }
 
 export function GoalsTree() {
   const { data, openCreate } = useGoalsUi()
   const drag = useGoalDrag()
   const [move, setMove] = useState<MoveOption | null>(null)
+  const [archiveId, setArchiveId] = useState<string | null>(null)
 
   const tops = topLevelGoals(data.goals)
   if (!tops.length) {
@@ -533,13 +355,15 @@ export function GoalsTree() {
             drag={drag}
             isLastSibling={index === tops.length - 1}
             onOpenMove={setMove}
+            onArchive={setArchiveId}
           />
         ))}
       </ul>
+      {tops.filter(goal => !goal.completedAt).length > 1 ? <p className="goal-reorder-hint">Long press, then drag to reorder.</p> : null}
+      {archiveId ? <GoalRemovalDialog goalId={archiveId} action="archive" onClose={() => setArchiveId(null)} /> : null}
       {move ? (
         <MovePopover
           goal={move.goal}
-          anchor={move.anchor}
           onClose={() => setMove(null)}
         />
       ) : null}
@@ -549,51 +373,26 @@ export function GoalsTree() {
 
 export function ArchivedGoals() {
   const { data, applyData, notify } = useGoalsUi()
-
+  const [savingId, setSavingId] = useState<string | null>(null)
+  const pending = useRef(false)
   const restore = async (goal: Goal) => {
-    const result = await restoreGoalAction({ data: { goalId: goal.id } })
-    if (result.ok) applyData(result)
-    else notify(result.message)
+    if (pending.current) return
+    pending.current = true; setSavingId(goal.id)
+    try {
+      const result = await restoreGoalAction({ data: { goalId: goal.id } })
+      if (result.ok) { applyData(result); notify('Goal restored.') }
+      else notify(result.message)
+    } catch { notify('The goal was not restored. Try again.') }
+    finally { pending.current = false; setSavingId(null) }
   }
-
-  if (!data.archivedGoals.length) {
-    return (
-      <div className="empty-state">
-        <p>No archived goals.</p>
-      </div>
-    )
-  }
-  return (
-    <ul className="goal-tree is-archived">
-      {data.archivedGoals.map((goal) => (
-        <li key={goal.id}>
-          <div className="goal-row is-history">
-            <span className="goal-chevron" aria-hidden="true" />
-            <Link
-              className="goal-name"
-              to="/goals/$goalId"
-              params={{ goalId: goal.id }}
-            >
-              {goal.title}
-            </Link>
-            <span className="goal-spacer" />
-            <span className="goal-meta">
-              {goal.archivedAt ? (
-                <span className="goal-count">
-                  Archived {formatShortDate(goal.archivedAt.slice(0, 10))}
-                </span>
-              ) : null}
-            </span>
-            <button
-              type="button"
-              className="secondary-btn"
-              onClick={() => void restore(goal)}
-            >
-              Restore
-            </button>
-          </div>
-        </li>
-      ))}
-    </ul>
-  )
+  if (!data.archivedGoals.length) return <div className="empty-state"><p>No archived goals.</p></div>
+  const roots = data.archivedGoals.filter(goal => !data.archivedGoals.some(parent => parent.id === goal.parentId))
+  return <ul className="goal-tree is-archived">{roots.map(goal => <li key={goal.id}>
+    <div className="goal-row is-history">
+      <span className="goal-chevron" aria-hidden="true"><FlagIcon size={21} /></span>
+      <div className="goal-row-copy"><Link className="goal-name" to="/goals/$goalId" params={{goalId:goal.id}}>{goal.title}</Link><span className="goal-meta">Archived {goal.archivedAt ? formatShortDate(goal.archivedAt.slice(0,10)) : ''}</span></div>
+      <button type="button" className="secondary-btn" disabled={savingId !== null} onClick={() => void restore(goal)}>{savingId === goal.id ? 'Restoring…' : 'Restore'}</button>
+    </div>
+    {data.archivedGoals.some(sub => sub.parentId === goal.id) ? <ul className="goal-subgoals">{data.archivedGoals.filter(sub => sub.parentId === goal.id).map(sub => <li key={sub.id}><div className="goal-row is-history"><span className="goal-chevron" aria-hidden="true"><FlagIcon /></span><Link className="goal-name" to="/goals/$goalId" params={{goalId:sub.id}}>{sub.title}</Link></div></li>)}</ul> : null}
+  </li>)}</ul>
 }

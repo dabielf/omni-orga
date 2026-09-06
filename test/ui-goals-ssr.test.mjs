@@ -155,7 +155,7 @@ test('rows show priority marks, factual progress, and one-shot bars', async () =
   const html = await render('/goals')
 
   // Priority mark is a labelled flag icon, not color alone.
-  assert.match(html, /aria-label="Priority goal"/)
+  assert.match(html, /aria-label="Priority" aria-pressed="true"/)
   // Priority toggle reflects state without relying on color.
   assert.match(html, /aria-pressed="true"[^>]*aria-label="Priority"|aria-label="Priority"[^>]*aria-pressed="true"/)
 
@@ -167,7 +167,7 @@ test('rows show priority marks, factual progress, and one-shot bars', async () =
   // No linked tasks.
   assert.match(html, /No tasks yet/)
   // No type labels in rows.
-  assert.doesNotMatch(html, /One-shot goal/)
+  assert.match(html, /One-shot/)
 })
 
 test('tree rows keep the quiet actions and expand control server-rendered', async () => {
@@ -177,10 +177,10 @@ test('tree rows keep the quiet actions and expand control server-rendered', asyn
     html,
     /aria-expanded="true"[^>]*aria-label="Collapse Steady work"|aria-label="Collapse Steady work"[^>]*aria-expanded="true"/,
   )
-  assert.match(html, /aria-label="Move to another place in the hierarchy"/)
+  assert.match(html, /Move…/)
   assert.match(html, /aria-label="Archive"/)
-  assert.match(html, /View tasks/)
-  assert.match(html, /Add goal/)
+  assert.match(html, /More actions for/)
+  assert.match(html, /New goal/)
   assert.match(html, /aria-label="Show active or archived goals"/)
 })
 
@@ -245,9 +245,9 @@ test('completing a one-shot goal keeps unfinished tasks active and undo restores
   const completed = await render(`/goals/${fixture.gShip.id}`)
   assert.match(
     completed,
-    /Goal completed\. Unfinished tasks stay active without it\./,
+    /Goal completed\./,
   )
-  assert.match(completed, /Undo/)
+  assert.match(completed, /Reopen/)
   assert.doesNotMatch(completed, /Complete goal/)
   // Completed task history keeps its goal link; the unfinished task is
   // gone from the goal and stays active in Tasks.

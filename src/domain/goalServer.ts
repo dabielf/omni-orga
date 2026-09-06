@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
+import { validateGoalRemoval } from './goalInput'
 
 import type { DomainStore, CreateGoalInput, Goal, GoalProgress, Task } from './store'
 
@@ -93,9 +94,9 @@ export const setGoalPriorityAction = createServerFn({ method: 'POST' })
   })
 
 export const completeGoalAction = createServerFn({ method: 'POST' })
-  .validator(withGoalId)
+  .validator(validateGoalRemoval)
   .handler(async ({ data }): Promise<GoalsActionResult> => {
-    return withGoals((store) => store.completeGoal(data.goalId))
+    return withGoals((store) => store.completeGoal(data.goalId, { linkedTasks: data.linkedTasks }))
   })
 
 export const reopenGoalAction = createServerFn({ method: 'POST' })
@@ -105,9 +106,9 @@ export const reopenGoalAction = createServerFn({ method: 'POST' })
   })
 
 export const archiveGoalAction = createServerFn({ method: 'POST' })
-  .validator(withGoalId)
+  .validator(validateGoalRemoval)
   .handler(async ({ data }): Promise<GoalsActionResult> => {
-    return withGoals((store) => store.archiveGoal(data.goalId))
+    return withGoals((store) => store.archiveGoal(data.goalId, undefined, { linkedTasks: data.linkedTasks }))
   })
 
 export const restoreGoalAction = createServerFn({ method: 'POST' })
@@ -117,9 +118,9 @@ export const restoreGoalAction = createServerFn({ method: 'POST' })
   })
 
 export const deleteGoalAction = createServerFn({ method: 'POST' })
-  .validator(withGoalId)
+  .validator(validateGoalRemoval)
   .handler(async ({ data }): Promise<GoalsActionResult> => {
-    return withGoals((store) => store.deleteGoal(data.goalId))
+    return withGoals((store) => store.deleteGoal(data.goalId, { linkedTasks: data.linkedTasks }))
   })
 
 export const reorderGoalsAction = createServerFn({ method: 'POST' })

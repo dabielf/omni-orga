@@ -1240,6 +1240,7 @@ export function createDomainStore(
 
   const moveGoal = (goalId: string, parentId: string | null) => {
     const goal = getGoalRow(goalId)
+    if (goalId === parentId) throw new DomainError('VALIDATION_FAILED', 'A goal cannot be its own parent')
     if (goal.completed_at || goal.archived_at) {
       throw new DomainError(
         'VALIDATION_FAILED',
