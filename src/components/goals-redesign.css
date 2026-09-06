@@ -1,5 +1,5 @@
 /* Approved Pen goal screens and state library. Shared shell tokens live in styles.css. */
-.goals-heading { display:flex; align-items:center; justify-content:space-between; gap:24px; margin-bottom:28px; }
+.goals-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:24px; margin-bottom:28px; }
 .goals-heading h1 { margin:0; }
 .goals-index-page .goals-topbar { margin-bottom:28px; }
 .goals-index-page .segmented { gap:8px; background:none; padding:0; border:0; }
@@ -98,7 +98,6 @@
 }
 @media (prefers-reduced-motion: reduce) { .goal-chevron svg, .goal-row-actions { transition:none; } }
 .goals-index-page .segmented { margin-left:0; }
-.goals-index-page h1, .goal-detail-page h1 { font-size:40px; font-weight:550; letter-spacing:-.02em; }
 .goals-index-page a, .goal-detail-page a { text-decoration:none; }
 .goals-index-page a:hover, .goal-detail-page a:hover { text-decoration:underline; }
 .goals-index-page .goal-row, .goal-detail-page .goal-task-list li, .goal-detail-page .goal-sub-list li { border-color:#DCE4DD; }
@@ -106,4 +105,3 @@
 .goal-dialog .primary-btn, .goal-dialog .secondary-btn, .goals-index-page .primary-btn, .goal-detail-page .primary-btn, .goal-detail-page .secondary-btn { border:0; min-height:44px; padding:12px 14px; font-size:14px; font-weight:500; border-radius:6px; }
 .goal-dialog .primary-btn, .goals-index-page .primary-btn, .goal-detail-page .primary-btn { background:#285B40; color:white; }
 .goal-dialog .secondary-btn, .goal-detail-page .secondary-btn { background:#F0F4F0; color:#285B40; }
-@media (max-width:44rem) { .goals-index-page h1, .goal-detail-page h1 { font-size:34px; } }
