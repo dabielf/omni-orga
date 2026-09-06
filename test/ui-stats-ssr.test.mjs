@@ -166,14 +166,14 @@ test('renamed repeatable copies count under one history with the weekly rate', a
 
   assert.match(html, /3 tasks and subtasks done/)
   assert.match(html, /Practice guitar daily/)
-  assert.match(html, /2 times in 30 days · ≈0.5 a week/)
+  assert.match(html, /2 times in 30 days. About 0.5 a week/)
 })
 
 test('one-shot sections show n of m with bar and percentage', async () => {
   const html = await render('/stats')
 
   // Completed: form + 2 mailbox copies; total adds the two open tasks.
-  assert.match(html, /3 of 5 tasks done · 60%/)
+  assert.match(html, /3 of 5 tasks done. 60% in total./)
   assert.match(html, /width:\s*60%/)
 })
 
@@ -187,10 +187,10 @@ test('quiet goals and periods read as zeros without failure language', async () 
 test('one-shot goals completed in the period are listed with their day', async () => {
   const html = await render('/stats')
 
-  assert.match(html, /One-shot goals completed in this period/)
+  assert.match(html, /Completed in this period/)
   assert.match(
     html,
-    new RegExp(`Ship the release, completed ${shortDay(daysAgoIso(1))}`),
+    new RegExp(`Ship the release</span>.*Completed (<!-- -->)?${shortDay(daysAgoIso(1))}`),
   )
 })
 
@@ -198,12 +198,12 @@ test('period choices live in the URL and change the aggregation', async () => {
   const ninety = await render('/stats?period=90')
   // The old chore (60 days ago) is back inside the window.
   assert.match(ninety, /stats-counter-number[^>]*>7</)
-  assert.match(ninety, /2 times in 90 days · ≈0.2 a week/)
+  assert.match(ninety, /2 times in 90 days. About 0.2 a week/)
   assert.equal(activePeriodLabel(ninety), '90 days')
 
   const year = await render('/stats?period=365')
   assert.match(year, /stats-counter-number[^>]*>7</)
-  assert.match(year, /2 times in 365 days · ≈0 a week/)
+  assert.match(year, /2 times in 365 days. About 0 a week/)
   assert.equal(activePeriodLabel(year), '12 months')
   // The period navigation offers the 12-month choice under its label.
   assert.match(year, /href="\/stats\?period=365\"[^>]*>12 months<\/a>/)

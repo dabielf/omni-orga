@@ -1,4 +1,5 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
+import '../calendar-stats.css'
 
 import { AppShell, EmptyState, Page } from '../components/AppShell'
 import { useCanonicalUrl } from '../components/useCanonicalUrl'
@@ -82,24 +83,25 @@ function StatsPage() {
                 >
                   <h2 className="stats-goal-name">
                     {section.title}
-                    <span className="type-chip">
-                      {section.kind === 'ongoing' ? 'Ongoing' : 'One-shot'}
-                    </span>
+
                   </h2>
                   {section.kind === 'ongoing' ? (
                     <>
                       <p className="stats-goal-line">
-                        {`${section.doneCount} tasks and subtasks done`}
+                        {`Ongoing goal. ${section.doneCount} tasks and subtasks done in total.`}
                       </p>
                       {section.repeatables.length ? (
                         <ul className="stats-repeatables">
                           {section.repeatables.map((row) => (
                             <li className="stats-repeatable" key={row.taskId}>
+                              <span className="stats-repeat-icon" aria-hidden="true">⇄</span>
+                              <span className="stats-repeatable-copy">
                               <span className="stats-repeatable-name">
                                 {row.title}
                               </span>
                               <span className="stats-repeatable-count">
-                                {row.text}
+                                {row.text.replace(' · ≈', '. About ')}
+                              </span>
                               </span>
                             </li>
                           ))}
@@ -109,11 +111,11 @@ function StatsPage() {
                   ) : (
                     <>
                       <p className="stats-goal-line">
-                        {`${section.completed} of ${section.total} tasks done · ${section.percentage}%`}
+                        {`${section.completed} of ${section.total} tasks done. ${section.percentage}% in total.`}
                       </p>
-                      <div className="goal-bar is-wide" aria-hidden="true">
+                      {section.total > 0 && <div className="goal-bar is-wide" aria-hidden="true">
                         <span style={{ width: `${section.percentage}%` }} />
-                      </div>
+                      </div>}
                     </>
                   )}
                 </section>
@@ -125,12 +127,13 @@ function StatsPage() {
                 aria-label="One-shot goals completed in the period"
               >
                 <h2 className="stats-heading">
-                  One-shot goals completed in this period
+                  Completed in this period
                 </h2>
                 <ul className="stats-completed-list">
                   {view.completedGoals.map((goal) => (
                     <li key={goal.goalId}>
-                      {`${goal.title}, completed ${goal.day}`}
+                      <span>{goal.title}</span>
+                      <time dateTime={goal.completedAt}>Completed {goal.day}</time>
                     </li>
                   ))}
                 </ul>

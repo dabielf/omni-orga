@@ -1,0 +1,77 @@
+.calendar-view { max-width: 1040px; }
+.cal-heading h2 { margin-bottom: 6px; font-size: 20px; }
+.cal-range, .cal-count, .cal-select-hint { color: var(--muted); font-size: 14px; }
+.cal-range { margin-bottom: 32px; }
+.cal-layout { display: grid; grid-template-columns: minmax(0, 2.6fr) minmax(240px, 1fr); gap: 28px; align-items: start; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.cal-wd { color: var(--muted); text-align: center; font-size: 12px; padding-bottom: 6px; }
+.cal-cell { min-width: 0; min-height: 72px; display: flex; flex-direction: column; gap: 5px; padding: 8px; border: 1px solid var(--line); margin: -1px 0 0 -1px; color: var(--ink); text-decoration: none; }
+.cal-cell:hover { background: var(--nav-surface); }
+.cal-cell.is-past { color: var(--muted); }
+.cal-cell.is-selected { background: var(--accent); }
+.cal-cell.is-today { outline: 1px solid var(--accent-ink); outline-offset: -1px; }
+.cal-cell:focus-visible { position: relative; z-index: 1; }
+.cal-day-num { font-size: 15px; }
+.cal-cell.is-today .cal-day-num { font-weight: 650; }
+.cal-cell-count { font-size: 11px; color: var(--accent-ink); }
+.cal-panel h3 { margin: 0 0 12px; font-size: 17px; font-weight: 600; overflow-wrap: anywhere; }
+.cal-panel { padding-top: 4px; min-width: 0; }
+.cal-selected-list { max-height: 390px; overflow-y: auto; }
+.cal-row { display: flex; align-items: center; gap: 16px; justify-content: space-between; border-bottom: 1px solid var(--line); padding: 16px 0; min-width: 0; }
+.cal-row-copy { min-width: 0; display: grid; gap: 5px; }
+.cal-task-name { font-size: 17px; overflow-wrap: anywhere; }
+.cal-meta { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.cal-overdue, .cal-error { color: #963e34; }
+.cal-row > button { flex-shrink: 0; }
+.cal-pool { margin-top: 30px; }
+.cal-pool h2 { font-size: 18px; margin-bottom: 4px; }
+.cal-phone-actions { display: none; }
+.cal-pop { width: min(520px, calc(100vw - 48px)); max-height: calc(100dvh - 48px); margin: auto; padding: 28px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); overflow-y: auto; }
+.cal-pop::backdrop { background: rgb(36 56 47 / 20%); }
+.cal-dialog-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 24px; }
+.cal-dialog-head h2 { font-size: 24px; margin: 0; }
+.cal-pop h3 { font-size: 19px; overflow-wrap: anywhere; }
+.cal-pop-sub, .cal-pop-hint { color: var(--muted); font-size: 13px; }
+.cal-pop-hint { margin-top: 14px; }
+.cal-day-picker { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+.cal-day-picker button { padding: 0; min-height: 44px; min-width: 0; border: 1px solid transparent; border-radius: 4px; background: var(--nav-surface); color: var(--ink); cursor: pointer; }
+.cal-day-picker button.is-current { background: var(--accent); }
+.cal-day-picker button.is-today { border-color: var(--accent-ink); }
+.cal-day-picker button:disabled { color: var(--muted); cursor: default; text-decoration: line-through; }
+.cal-pop-actions { display: flex; flex-direction: column; align-items: start; gap: 16px; margin-top: 24px; }
+.stats-counters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; list-style: none; padding: 0 0 24px; margin: 36px 0 0; border-bottom: 1px solid var(--line); }
+.stats-counter { display: grid; gap: 8px; }
+.stats-counter-number { font-size: 32px; font-weight: 600; line-height: 1.2; }
+.stats-counter-label { font-size: 13px; color: var(--muted); }
+.stats-goal { padding: 28px 0 24px; border-bottom: 1px solid var(--line); }
+.stats-goal-name { font-size: 21px; margin-bottom: 10px; overflow-wrap: anywhere; }
+.stats-goal-line { font-size: 14px; color: var(--muted); margin-bottom: 16px; }
+.stats-repeatables { list-style: none; padding: 0; margin: 20px 0 0; }
+.stats-repeatable { display: flex; align-items: center; gap: 20px; padding: 10px 16px; }
+.stats-repeatable-copy { display: grid; gap: 6px; min-width: 0; }
+.stats-repeat-icon { flex-shrink: 0; color: var(--muted); font-size: 24px; }
+.stats-repeatable-name { font-size: 17px; overflow-wrap: anywhere; }
+.stats-repeatable-count { font-size: 13px; color: var(--muted); }
+.stats-completed { margin-top: 28px; }
+.stats-heading { font-size: 17px; }
+.stats-completed-list { list-style: none; padding: 0; margin: 0; }
+.stats-completed-list li { display: grid; gap: 8px; padding: 12px 0; }
+.stats-completed-list time { color: var(--muted); font-size: 13px; }
+@media (max-width: 1100px) { .cal-layout { grid-template-columns: minmax(0, 1fr); } .cal-selected-list { max-height: 300px; } }
+@media (max-width: 640px) {
+  .cal-range { margin-bottom: 24px; }
+  .cal-cell { min-height: 45px; padding: 5px; gap: 3px; }
+  .cal-day-num { font-size: 13px; }
+  .cal-cell-count { font-size: 9px; }
+  .cal-wd { font-size: 10px; }
+  .cal-layout { gap: 24px; }
+  .cal-selected-list > .cal-row:not(:first-child), .cal-selected-list > .cal-row > button { display: none; }
+  .cal-phone-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .cal-pop { width: 100%; max-width: none; height: 100dvh; max-height: none; padding: 24px; border: 0; border-radius: 0; }
+  .cal-pool { margin-top: 28px; }
+  .stats-counters { gap: 14px; margin-top: 28px; }
+  .stats-counter-number { font-size: 28px; }
+  .stats-counter-label { font-size: 12px; }
+  .stats-goal-name { font-size: 20px; }
+  .stats-repeatable { padding: 8px 0; gap: 14px; }
+}

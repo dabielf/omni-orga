@@ -146,6 +146,7 @@ before(() => {
     parentId: blockedArrived.id,
   })
 
+  for (let index = 1; index <= 5; index++) store.createTask({ title: `Busy task ${index}`, scheduledDay: inDays(6) })
   store.close()
   fixture = { gWork }
 })
@@ -179,11 +180,11 @@ test('there are no month navigation controls and no call to action', async () =>
   assert.ok(!html.includes('Open Tasks'))
 })
 
-test('the legend names all three date registers', async () => {
+test('the grid uses counts and each day has a readable navigation label', async () => {
   const html = await render('/calendar')
-  assert.ok(html.includes('Scheduled day'))
-  assert.ok(html.includes('Ideal completion date'))
-  assert.ok(html.includes('Deadline'))
+  assert.match(cell(html, inDays(2)), /cal-cell-count/)
+  assert.match(html, /aria-label="[^"]+, 1 task"/)
+  assert.doesNotMatch(cell(html, inDays(2)), /Book the mover/)
 })
 
 test('a day panel lists exactly the tasks scheduled that day', async () => {
@@ -191,7 +192,7 @@ test('a day panel lists exactly the tasks scheduled that day', async () => {
   const day = panel(html)
   assert.ok(day, 'panel rendered for the selected day')
   assert.match(day, /Book the mover/)
-  assert.match(day, /task planned/)
+  assert.match(day, /View/)
   assert.ok(!day.includes('Send the form'))
   assert.ok(!day.includes('Draft the report'))
 })
@@ -199,11 +200,11 @@ test('a day panel lists exactly the tasks scheduled that day', async () => {
 test('panel rows carry ideal and deadline notes with their dates', async () => {
   const withIdeal = panel(await render(`/calendar?date=${inDays(4)}`))
   assert.match(withIdeal, /Send the form/)
-  assert.match(withIdeal, new RegExp(`ideal (<!-- -->)?${fmtShort(inDays(10))}`))
+  assert.match(withIdeal, new RegExp(`Ideal (<!-- -->)?${fmtShort(inDays(10))}`))
 
   const withDeadline = panel(await render(`/calendar?date=${inDays(3)}`))
   assert.match(withDeadline, /Draft the report/)
-  assert.match(withDeadline, new RegExp(`deadline (<!-- -->)?${fmtShort(inDays(7))}`))
+  assert.match(withDeadline, new RegExp(`Deadline (<!-- -->)?${fmtShort(inDays(7))}`))
 })
 
 test('an empty day panel states the fact without a call to action', async () => {
@@ -216,17 +217,19 @@ test('the pool lists tasks without a day and never scheduled ones', async () => 
   const html = await render('/calendar')
   const waiting = pool(html)
   assert.match(waiting, /Water the plants/)
-  assert.match(waiting, new RegExp(`deadline (<!-- -->)?${fmtShort(yesterday)}`))
+  assert.match(waiting, new RegExp(`Deadline (<!-- -->)?${fmtShort(yesterday)}`))
   assert.ok(!waiting.includes('Book the mover'))
   assert.ok(!waiting.includes('Send the form'))
 })
 
 test('a blocked task stays on its future day and shows as blocked', async () => {
   const html = await render('/calendar')
-  assert.match(cell(html, tomorrow), /Plan the trip/)
+  assert.match(cell(html, tomorrow), /cal-cell-count/)
+  const day = panel(await render(`/calendar?date=${tomorrow}`))
+  assert.match(day, /Plan the trip/)
   const waiting = pool(html)
   assert.ok(!waiting.includes('Plan the trip'))
-  assert.match(cell(html, tomorrow), /Blocked/)
+  assert.match(day, /Blocked/)
 })
 
 test('a blocked task whose day arrived waits in the pool, visibly blocked', async () => {
@@ -239,4 +242,12 @@ test('a blocked task whose day arrived waits in the pool, visibly blocked', asyn
     waiting.indexOf('Paint the walls') + 400,
   )
   assert.match(row, /Blocked/)
+})
+
+
+test('busy days keep every task reachable through the day panel', async () => {
+  const html = await render(`/calendar?date=${inDays(6)}`)
+  assert.match(cell(html, inDays(6)), /5<!-- --> <!-- -->tasks/)
+  const day = panel(html)
+  for (let index = 1; index <= 5; index++) assert.match(day, new RegExp(`Busy task ${index}`))
 })
