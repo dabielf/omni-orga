@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Link } from '@tanstack/react-router'
 
 import {
@@ -74,6 +75,8 @@ function GoalRows({
 
 export function TasksRail() {
   const { data, search, goalExpansion } = useTasksUi()
+  const menu = useRef<HTMLDetailsElement>(null)
+  useEffect(() => { menu.current?.removeAttribute('open') }, [search.goal, search.available, search.ideal, search.view])
   const keepFilters = { available: search.available, ideal: search.ideal }
 
   const railContent = (
@@ -141,7 +144,7 @@ export function TasksRail() {
       <nav className="task-rail task-rail-plain" aria-label="Task views">
         {railContent}
       </nav>
-      <details className="task-rail task-rail-menu">
+      <details className="task-rail task-rail-menu" ref={menu}>
         <summary aria-label="Task views">{tasksHeading(data.goals, search)}</summary>
         {railContent}
       </details>
