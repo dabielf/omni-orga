@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 
-import { Page } from '../components/AppShell'
 import { ArchivedGoals, GoalsTree } from '../components/GoalList'
+import { priorityInUse } from '../lib/goalsView'
 import { useGoalsUi } from '../components/goalsContext'
 
 export type GoalsSearch = { view?: 'archived' }
@@ -16,13 +16,14 @@ export const Route = createFileRoute('/goals/')({
 })
 
 function GoalsIndex() {
-  const { openCreate } = useGoalsUi()
+  const { openCreate, data } = useGoalsUi()
   const navigate = useNavigate()
   const { view } = Route.useSearch()
   const showArchived = view === 'archived'
 
   return (
-    <Page title="Goals">
+    <div className="page goals-index-page">
+      <header className="goals-heading"><h1>Goals</h1><button type="button" className="primary-btn" onClick={openCreate}>New goal</button></header>
       <div className="goals-topbar">
         <div
           className="segmented"
@@ -46,11 +47,10 @@ function GoalsIndex() {
             Archived
           </button>
         </div>
-        <button type="button" className="primary-btn" onClick={openCreate}>
-          Add goal
-        </button>
+
       </div>
+      {!showArchived ? <p className="goal-priority-count">{priorityInUse(data.goals)} priority goals{priorityInUse(data.goals) === 3 ? <span> · All 3 priority slots are in use</span> : null}</p> : null}
       {showArchived ? <ArchivedGoals /> : <GoalsTree />}
-    </Page>
+    </div>
   )
 }

@@ -67,7 +67,7 @@ export function goalDetailFromData(
   if (!goal) return null
 
   const progress = data.progress[goal.id]
-  const subgoals = subgoalsOf(data.goals, goal.id)
+  const subgoals = subgoalsOf([...data.goals, ...data.archivedGoals], goal.id)
   const scope = new Set([goal.id, ...subgoals.map((sub) => sub.id)])
   const tasks = data.tasks
     .filter(
@@ -110,4 +110,23 @@ export function deleteWarning(detail: GoalDetail): string {
         ? '1 linked task stays active without a goal.'
         : `${openCount} linked tasks stay active without a goal.`
   return `${tree} ${kept}`
+}
+
+/** Shared eligibility for creating and moving a goal. The store remains authoritative. */
+export function goalParentOptions(goals: Goal[], kind: Goal['kind'], movingId?: string) {
+  const hasChildren = Boolean(movingId && goals.some(goal => goal.parentId === movingId))
+  return [
+    { id: null as string | null, title: 'Top level', reason: '' },
+    ...goals.filter(goal => !goal.parentId && goal.id !== movingId).map(goal => ({
+      id: goal.id as string | null,
+      title: goal.title,
+      reason: goal.archivedAt || goal.completedAt
+        ? 'This goal is inactive.'
+        : hasChildren
+          ? 'A goal with subgoals must stay at top level.'
+          : goal.kind === 'one_shot' && kind === 'ongoing'
+            ? 'A one-shot goal can only contain one-shot subgoals.'
+            : '',
+    })),
+  ]
 }

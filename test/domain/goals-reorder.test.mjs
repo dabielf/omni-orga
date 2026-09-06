@@ -210,3 +210,12 @@ test('moveGoal rejects inactive goals and inactive targets', async () => {
     })
   })
 })
+
+test('moveGoal rejects self-parenting before it can create a cycle', async () => {
+  await useStore(store => {
+    const goal = store.createGoal({title:'Self',kind:'ongoing'})
+    assert.throws(() => store.moveGoal(goal.id, goal.id), {code:'VALIDATION_FAILED'})
+    assert.equal(store.getGoal(goal.id).parentId, null)
+    assert.equal(store.listGoals().length, 1)
+  })
+})

@@ -622,3 +622,20 @@ test('progress counts a task once across multiple link paths', async () => {
     assert.equal(store.getGoalProgress(goal.id).text, '1 of 2 · 50%')
   })
 })
+
+test('invalid goal-removal replacements roll back every earlier task choice', async () => {
+  await useStore(store => {
+    const parent = store.createGoal({title:'Remove me',kind:'ongoing'})
+    const sub = store.createGoal({title:'Child',kind:'one_shot',parentId:parent.id})
+    const one = store.createTask({title:'One',goalIds:[parent.id]})
+    const two = store.createTask({title:'Two',goalIds:[sub.id]})
+    assert.throws(() => store.archiveGoal(parent.id,undefined,{linkedTasks:{
+      [one.id]:{action:'archive'}, [two.id]:{action:'link',goalId:sub.id},
+    }}), {code:'VALIDATION_FAILED'})
+    assert.equal(store.getGoal(parent.id).archivedAt,null)
+    assert.equal(store.getGoal(sub.id).archivedAt,null)
+    assert.equal(store.getTask(one.id).archivedAt,null)
+    assert.deepEqual(store.getTask(one.id).goalIds,[parent.id])
+    assert.deepEqual(store.getTask(two.id).goalIds,[sub.id])
+  })
+})
