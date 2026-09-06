@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import type { ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 
 import { archiveTaskAction, restoreTaskAction } from '../domain/server'
 import type { Task } from '../domain/store'
@@ -218,19 +218,29 @@ function CompletedList({ tasks }: { tasks: Task[] }) {
 
 function ArchivedList({ tasks }: { tasks: Task[] }) {
   const { applyData, notify, search } = useTasksUi()
+  const pending = useRef(new Set<string>())
+  const [restoring, setRestoring] = useState(new Set<string>())
   const restore = async (task: Task) => {
-    const result = await restoreTaskAction({ data: { taskId: task.id } })
-    if (result.ok) {
-      applyData(result)
-      notify('Task restored.', async () => {
-        try {
-          const undo = await archiveTaskAction({ data: { taskId: task.id } })
-          if (undo.ok) applyData(undo)
-          else notify(undo.message)
-        } catch { notify('Could not undo restoration. Try again.') }
-      })
-    } else {
-      notify(result.message)
+    if (pending.current.has(task.id)) return
+    pending.current.add(task.id)
+    setRestoring(new Set(pending.current))
+    try {
+      const result = await restoreTaskAction({ data: { taskId: task.id } })
+      if (result.ok) {
+        applyData(result)
+        notify('Task restored.', async () => {
+          try {
+            const undo = await archiveTaskAction({ data: { taskId: task.id } })
+            if (undo.ok) applyData(undo)
+            else notify(undo.message)
+          } catch { notify('Could not undo restoration. Try again.') }
+        })
+      } else {
+        notify(result.message)
+      }
+    } finally {
+      pending.current.delete(task.id)
+      setRestoring(new Set(pending.current))
     }
   }
   return (
@@ -252,9 +262,10 @@ function ArchivedList({ tasks }: { tasks: Task[] }) {
             <button
               type="button"
               className="secondary-btn"
+              disabled={restoring.has(task.id)}
               onClick={() => void restore(task).catch(() => notify('Could not restore the task. Try again.'))}
             >
-              Restore
+              {restoring.has(task.id) ? 'Restoring…' : 'Restore'}
             </button>
           </div>
         </li>

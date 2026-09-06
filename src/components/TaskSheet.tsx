@@ -23,8 +23,12 @@ type CreateDraft = {
 }
 let createDraft: CreateDraft | null = null
 let creating = false
+let createVersion = 0
+let createGeneration = 0
 const createListeners = new Set<() => void>()
+function emitCreate() { createVersion++; createListeners.forEach(listener => listener()) }
 export function loadCreateDraft(presetGoalId?: string): CreateDraft {
+  if (!createDraft) createGeneration++
   return createDraft ??= { name: '', goalIds: presetGoalId ? [presetGoalId] : [],
     addToToday: false, ideal: null, deadline: null, repeatable: false, notes: '', links: [], linkDraft: { value: '', error: '' } }
 }
@@ -142,25 +146,29 @@ function MoreOptions({ open, toggle, children, notes, links }: {
 export function CreateSheet({ onClose }: { onClose: () => void }) {
   const { data, search, applyData, notify } = useTasksUi()
   const preset = data.goals.some(goal => goal.id === search.goal && !goal.completedAt && !goal.archivedAt) ? search.goal : undefined
-  const [draft, setDraft] = useState(() => loadCreateDraft(preset))
+  useSyncExternalStore(listener => { createListeners.add(listener); return () => { createListeners.delete(listener) } }, () => createVersion, () => 0)
+  const draft = loadCreateDraft(preset)
   const [moreOpen, setMoreOpen] = useState(false)
   const [error, setError] = useState('')
   const [nameError, setNameError] = useState(false)
   const nameRef = useRef<HTMLInputElement>(null)
-  const saving = useSyncExternalStore(listener => { createListeners.add(listener); return () => { createListeners.delete(listener) } }, () => creating, () => false)
-  const patch = (changes: Partial<CreateDraft>) => setDraft(current => {
-    const next = { ...current, ...changes }; createDraft = next; return next
-  })
+  const saving = creating
+  const patch = (changes: Partial<CreateDraft>) => {
+    if (!createDraft) return
+    createDraft = { ...createDraft, ...changes }
+    emitCreate()
+  }
   const replaceDate = (kind: 'ideal' | 'deadline', value: string | null) => {
     const previous = { ideal: draft.ideal, deadline: draft.deadline }
     const other = kind === 'ideal' ? 'deadline' : 'ideal'
     patch(value ? { [kind]: value, [other]: null } : { [kind]: null })
-    if (value && previous[other]) notify(kind === 'ideal' ? 'Deadline removed.' : 'Ideal completion date removed.', () => patch(previous))
+    const generation = createGeneration
+    if (value && previous[other]) notify(kind === 'ideal' ? 'Deadline removed.' : 'Ideal completion date removed.', () => { if (generation === createGeneration) patch(previous) })
   }
   const create = async () => {
     if (creating) return
     if (!draft.name.trim()) { setNameError(true); nameRef.current?.focus(); return }
-    creating = true; createListeners.forEach(fn => fn()); setError('')
+    creating = true; emitCreate(); setError('')
     try {
       const result = await createTaskAction({ data: { task: {
         title: draft.name.trim(), goalIds: draft.goalIds,
@@ -170,7 +178,7 @@ export function CreateSheet({ onClose }: { onClose: () => void }) {
       if (!result.ok) { setError(result.message); return }
       createDraft = null; applyData(result); onClose(); notify('Task created.')
     } catch { setError('The task was not saved. Try again.') }
-    finally { creating = false; createListeners.forEach(fn => fn()) }
+    finally { creating = false; emitCreate() }
   }
   return <SheetFrame onClose={onClose} label="New task">
     <label className="field"><span className="field-label">Task name</span>

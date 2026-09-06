@@ -78,3 +78,5 @@
 
 .stats-goal .goal-bar.is-wide { display: block; width: 100%; height: 6px; border-radius: 3px; background: var(--line); }
 .stats-goal .goal-bar > span { height: 100%; background: var(--accent-ink); box-shadow: none; }
+
+.cal-dialog-head { position: sticky; top: 0; z-index: 2; background: var(--surface); padding-block: 12px; margin-top: -12px; margin-bottom: 12px; }

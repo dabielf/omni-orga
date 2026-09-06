@@ -97,6 +97,11 @@ test('phone day list exposes every task and nested Move restores focus and retri
   await view.click()
   const day = page.getByRole('dialog', { name: 'Today', exact: true })
   assert.equal(await day.locator('.cal-row').count(), 8)
+  await page.setViewportSize({ width: 390, height: 420 })
+  await day.evaluate(el => { el.scrollTop = el.scrollHeight })
+  const closeBounds = await day.getByRole('button', { name: 'Close', exact: true }).boundingBox()
+  assert.ok(closeBounds.y >= 0 && closeBounds.y + closeBounds.height <= 420, 'Calendar Close stays visible while the list scrolls')
+  await page.setViewportSize({ width: 390, height: 844 })
   const move = day.locator('.cal-row').filter({ hasText: 'Day task 8' }).getByRole('button', { name: 'Move', exact: true })
   await move.click()
   const dialog = page.getByRole('dialog', { name: 'Move Day task 8', exact: true })
@@ -286,4 +291,61 @@ test('task Undo stays usable in the phone sheet, pauses on focus, then clears ph
   assert.ok(banner.y + banner.height <= tabs.y)
   await restoredNotice.getByRole('button', { name: 'Undo', exact: true }).click()
   await visible(page.getByRole('link', { name: 'Undo notice task', exact: true }))
+})
+
+test('archived task restoration blocks duplicate submits and retries after failure', async () => {
+  await page.goto(url + '/tasks')
+  await createTask('Restore once')
+  await page.getByRole('link', { name: 'Restore once', exact: true }).click()
+  await page.getByRole('button', { name: 'Archive', exact: true }).click()
+  await visible(page.getByRole('button', { name: 'Restore', exact: true }))
+  await page.getByRole('button', { name: 'Close', exact: true }).first().click()
+  await page.goto(url + '/tasks?view=archived')
+  const row = page.locator('.task-row').filter({ hasText: 'Restore once' })
+  const button = row.getByRole('button')
+  let posts = 0, release, captured
+  let fail = true
+  const held = new Promise(resolve => { release = resolve })
+  const ready = new Promise(resolve => { captured = resolve })
+  await page.route('**/_serverFn/**', async route => {
+    if (route.request().method() !== 'POST') return route.continue()
+    posts++
+    captured()
+    await held
+    return (fail ? route.abort() : route.continue()).catch(() => {})
+  })
+  try {
+    await button.dblclick({ force: true })
+    await ready
+    assert.equal(await button.isDisabled(), true)
+    assert.equal(posts, 1)
+    release()
+    await visible(page.getByRole('status').filter({ hasText: 'Could not restore the task.' }))
+    assert.equal(await button.isEnabled(), true)
+    fail = false
+    await button.click()
+    await row.waitFor({ state: 'detached' })
+    assert.equal(posts, 2)
+    await visible(page.getByRole('status').filter({ hasText: 'Task restored.' }))
+  } finally { release(); await page.unroute('**/_serverFn/**') }
+})
+
+
+test('creation date Undo updates the recovered draft after close and reopen', async () => {
+  await page.goto(url + '/tasks')
+  await page.getByRole('button', { name: 'New task', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'New task', exact: true })
+  await dialog.getByRole('textbox', { name: 'Task name', exact: true }).fill('Recover date Undo')
+  await dialog.getByRole('button', { name: '› More options' }).click()
+  await dialog.getByLabel('Ideal completion date', { exact: true }).fill('2030-09-10')
+  await dialog.getByLabel('Deadline', { exact: true }).fill('2030-09-12')
+  await dialog.getByRole('textbox', { name: 'Notes', exact: true }).fill('Keep these later notes')
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+  await page.getByRole('button', { name: 'New task', exact: true }).click()
+  await dialog.getByRole('button', { name: '› More options' }).click()
+  await dialog.getByRole('button', { name: 'Undo', exact: true }).click()
+  assert.equal(await dialog.getByLabel('Ideal completion date', { exact: true }).inputValue(), '2030-09-10')
+  assert.equal(await dialog.getByLabel('Deadline', { exact: true }).inputValue(), '')
+  assert.equal(await dialog.getByRole('textbox', { name: 'Notes', exact: true }).inputValue(), 'Keep these later notes')
+  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
 })
