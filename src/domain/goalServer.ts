@@ -84,21 +84,6 @@ export const createGoalAction = createServerFn({ method: 'POST' })
     return withGoals((store) => store.createGoal(data.goal))
   })
 
-export const updateGoalAction = createServerFn({ method: 'POST' })
-  .validator(
-    (input: {
-      goalId: string
-      title?: string
-      kind?: 'one_shot' | 'ongoing'
-    }) => input,
-  )
-  .handler(async ({ data }): Promise<GoalsActionResult> => {
-    return withGoals((store) => {
-      const { goalId, ...changes } = data
-      store.updateGoal(goalId, changes)
-    })
-  })
-
 export const setGoalPriorityAction = createServerFn({ method: 'POST' })
   .validator((input: { goalId: string; priority: boolean }) => input)
   .handler(async ({ data }): Promise<GoalsActionResult> => {
