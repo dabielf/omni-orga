@@ -69,6 +69,9 @@ export function GoalProgressView({
   wide?: boolean
 }) {
   if (!progress) return null
+  const text = progress.kind === 'ongoing'
+    ? `${progress.completed} ${wide ? 'tasks and subtasks done in total.' : 'tasks done'}`
+    : progress.total ? `${progress.completed} of ${progress.total} tasks done${wide ? `. ${progress.percentage}% in total.` : ''}` : 'No tasks yet'
   if (progress.kind === 'one_shot' && progress.total) {
     return (
       <>
@@ -78,11 +81,11 @@ export function GoalProgressView({
         >
           <span style={{ width: `${progress.percentage}%` }} />
         </span>
-        <span className="goal-count">{progress.text}</span>
+        <span className="goal-count">{text}</span>
       </>
     )
   }
-  return <span className="goal-count">{progress.text}</span>
+  return <span className="goal-count">{text}</span>
 }
 
 type MoveOption = { goal: Goal }
@@ -301,14 +304,15 @@ function GoalRow({ goal, drag, isLastSibling, onOpenMove, onArchive }: {
   const progress = data.progress[goal.id]
   return <li data-goal-row={goal.id} data-goal-active={!inactive} className={subs.length ? 'goal has-subs' : 'goal'}>
     <div className={rowClasses} onPointerDown={event => { if (!inactive) drag.onPointerDown(event, goal.id) }}>
-      {subs.length ? <button type="button" className="goal-chevron" aria-expanded={!isCollapsed} aria-label={`${isCollapsed ? 'Expand' : 'Collapse'} ${goal.title}`} onClick={() => toggleCollapsed(goal.id)}><ChevronIcon /></button> : <span className="goal-chevron" aria-hidden="true"><FlagIcon size={21} /></span>}
+      {subs.length ? <button type="button" className="goal-chevron" aria-expanded={!isCollapsed} aria-label={`${isCollapsed ? 'Expand' : 'Collapse'} ${goal.title}`} onClick={() => toggleCollapsed(goal.id)}><ChevronIcon /></button> : <span className="goal-chevron" aria-hidden="true">{goal.parentId ? <ChevronIcon /> : <FlagIcon size={21} />}</span>}
       <div className="goal-row-copy">
         <Link className="goal-name" to="/goals/$goalId" params={{goalId:goal.id}}>{goal.title}</Link>
         <span className="goal-meta">{goal.completedAt ? 'Completed' : goal.kind === 'ongoing' ? 'Ongoing' : 'One-shot'} · <GoalProgressView progress={progress} /></span>
       </div>
       {!inactive ? <div className="goal-row-actions">
-        <button type="button" className="goal-priority-btn" aria-label="Priority" aria-pressed={goal.priority} aria-disabled={capped || undefined} title={capped ? PRIORITY_LIMIT_MESSAGE : 'Priority'} disabled={saving} onClick={() => { if (capped) notify(PRIORITY_LIMIT_MESSAGE); else void togglePriority() }}>{goal.priority ? 'Priority' : 'Set priority'}</button>
+        {goal.priority ? <button type="button" className="goal-priority-btn" aria-label="Priority" aria-pressed={goal.priority} aria-disabled={capped || undefined} title={capped ? PRIORITY_LIMIT_MESSAGE : 'Priority'} disabled={saving} onClick={() => { if (capped) notify(PRIORITY_LIMIT_MESSAGE); else void togglePriority() }}>{goal.priority ? 'Priority' : 'Set priority'}</button> : null}
         <details className="goal-row-menu"><summary aria-label={`More actions for ${goal.title}`}>⋯</summary><div>
+          {!goal.priority ? <button type="button" className="goal-priority-btn" aria-label="Priority" aria-pressed={goal.priority} aria-disabled={capped || undefined} title={capped ? PRIORITY_LIMIT_MESSAGE : 'Priority'} disabled={saving} onClick={() => { if (capped) notify(PRIORITY_LIMIT_MESSAGE); else void togglePriority() }}>{goal.priority ? 'Priority' : 'Set priority'}</button> : null}
           <button type="button" onClick={event => { event.currentTarget.closest('details')?.querySelector('summary')?.focus(); event.currentTarget.closest('details')?.removeAttribute('open'); onOpenMove({goal}) }}>Move…</button>
           <button type="button" aria-label="Archive" onClick={event => { event.currentTarget.closest('details')?.querySelector('summary')?.focus(); event.currentTarget.closest('details')?.removeAttribute('open'); onArchive(goal.id) }}>Archive…</button>
         </div></details>
@@ -389,7 +393,7 @@ export function ArchivedGoals() {
   const roots = data.archivedGoals.filter(goal => !data.archivedGoals.some(parent => parent.id === goal.parentId))
   return <ul className="goal-tree is-archived">{roots.map(goal => <li key={goal.id}>
     <div className="goal-row is-history">
-      <span className="goal-chevron" aria-hidden="true"><FlagIcon size={21} /></span>
+      <span className="goal-chevron" aria-hidden="true">{goal.parentId ? <ChevronIcon /> : <FlagIcon size={21} />}</span>
       <div className="goal-row-copy"><Link className="goal-name" to="/goals/$goalId" params={{goalId:goal.id}}>{goal.title}</Link><span className="goal-meta">Archived {goal.archivedAt ? formatShortDate(goal.archivedAt.slice(0,10)) : ''}</span></div>
       <button type="button" className="secondary-btn" disabled={savingId !== null} onClick={() => void restore(goal)}>{savingId === goal.id ? 'Restoring…' : 'Restore'}</button>
     </div>

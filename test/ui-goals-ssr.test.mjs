@@ -161,9 +161,9 @@ test('rows show priority marks, factual progress, and one-shot bars', async () =
 
   // One-shot: thin bar + "n of m · p%".
   assert.match(html, /goal-bar[^>]*><span style="width:66%"/)
-  assert.match(html, /2 of 3 · 66%/)
+  assert.match(html, /2 of 3 tasks done/)
   // Ongoing: text only.
-  assert.match(html, /2 done/)
+  assert.match(html, /2 tasks done/)
   // No linked tasks.
   assert.match(html, /No tasks yet/)
   // No type labels in rows.
@@ -199,7 +199,7 @@ test('one-shot goal page shows bar, percentage, and task statuses', async () => 
 
   assert.match(html, /<h1[^>]*>Admin<\/h1>/)
   assert.match(html, /One-shot goal/)
-  assert.match(html, /2 of 3 · 66%/)
+  assert.match(html, /2 of 3 tasks done/)
   assert.match(html, /goal-bar[^>]*><span style="width:66%"/)
   assert.match(html, /Complete goal/)
   assert.match(html, /Delete…/)
@@ -265,7 +265,7 @@ test('completing a one-shot goal keeps unfinished tasks active and undo restores
   undo.close()
 
   const reopened = await render(`/goals/${fixture.gShip.id}`)
-  assert.match(reopened, /1 of 2 · 50%/)
+  assert.match(reopened, /1 of 2 tasks done/)
   assert.match(reopened, /Complete goal/)
   assert.match(reopened, taskRow('Tag the release'))
   assert.doesNotMatch(reopened, /Goal completed\./)
