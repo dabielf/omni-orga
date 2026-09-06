@@ -1,17 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 
 import type { StatsPeriod } from '../lib/urlState'
-import type { Goal, Task } from './store'
-
-/**
- * The read-only part of the domain store the Stats server function needs.
- * Structural, so the store implementation stays free to grow without a
- * shared base type.
- */
-type StatsStore = {
-  listGoals(input: { includeArchived?: boolean }): Goal[]
-  listTasks(input: { includeArchived?: boolean }): Task[]
-}
+import type { DomainStore, Goal, Task } from './store'
 
 export type StatsData = {
   period: StatsPeriod
@@ -25,9 +15,9 @@ export type StatsData = {
  * started with. The shared singleton from serverStore.ts is imported
  * dynamically inside the handler so the client bundle stays node-free.
  */
-async function getStore(): Promise<StatsStore> {
+async function getStore(): Promise<DomainStore> {
   const { getServerStore } = await import('./serverStore')
-  return (await getServerStore()) as unknown as StatsStore
+  return getServerStore()
 }
 
 export const loadStatsData = createServerFn({ method: 'GET' })

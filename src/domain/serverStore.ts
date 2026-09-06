@@ -1,33 +1,6 @@
-import { createDomainStore, DomainError, type CreateTaskInput, type Goal, type Task } from './store'
+import { createDomainStore, DomainError, type DomainStore, type Goal, type Task } from './store'
 // @ts-expect-error The foundation migration runner is a JavaScript module.
 import { defaultDatabasePath } from '../db/migrations.mjs'
-
-/**
- * The part of the domain store the Tasks server functions use. Structural, so
- * the store implementation stays free to grow without a shared base type.
- */
-export type DomainStore = {
-  archiveTask(taskId: string, archivedAt?: string): unknown
-  completeTask(taskId: string, completedAt?: string): unknown
-  createTask(input: CreateTaskInput): unknown
-  deleteTask(taskId: string): unknown
-  getPreviousCompletion(taskId: string): string | null
-  listGoals(input: { includeArchived?: boolean }): Goal[]
-  listTasks(input: { includeArchived?: boolean }): Task[]
-  getToday(day?: string): { open: Task[]; completed: Task[] }
-  planTask(taskId: string, value: string, today?: string): unknown
-  reorderToday(taskId: string, afterTaskId: string | null): unknown
-  restoreTask(taskId: string): unknown
-  setTaskDeadline(taskId: string, value: string | null): unknown
-  setTaskGoalLinks(taskId: string, goalIds: string[]): unknown
-  setTaskIdealCompletionDate(taskId: string, value: string | null): unknown
-  undoTaskCompletion(taskId: string): unknown
-  unplanTask(taskId: string): unknown
-  updateTask(
-    taskId: string,
-    input: { title?: string; notes?: string; externalLinks?: string[] },
-  ): unknown
-}
 
 export type TasksData = {
   today: string

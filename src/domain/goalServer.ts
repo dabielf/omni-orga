@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 
-import type { CreateGoalInput, Goal, GoalProgress, Task } from './store'
+import type { DomainStore, CreateGoalInput, Goal, GoalProgress, Task } from './store'
 
 export type GoalsData = {
   /** Active goals (completed ones included) in manual order. */
@@ -15,37 +15,13 @@ export type GoalsActionResult =
   | { ok: false; code: string; message: string }
 
 /**
- * The part of the domain store the Goals server functions use, including the
- * goal seams this ticket added (reorderGoals, moveGoal). Structural, so the
- * store implementation stays free to grow without a shared base type.
- */
-type GoalStore = {
-  archiveGoal(goalId: string): unknown
-  completeGoal(goalId: string): unknown
-  createGoal(input: CreateGoalInput): unknown
-  deleteGoal(goalId: string): unknown
-  getGoalProgress(goalId: string): GoalProgress
-  listGoals(input: {
-    includeArchived?: boolean
-    parentId?: string | null
-  }): Goal[]
-  listTasks(input: { includeArchived?: boolean }): Task[]
-  moveGoal(goalId: string, parentId: string | null): unknown
-  reorderGoals(goalId: string, afterGoalId: string | null): unknown
-  reopenGoal(goalId: string): unknown
-  restoreGoal(goalId: string): unknown
-  setGoalPriority(goalId: string, priority: boolean): unknown
-  updateGoal(goalId: string, input: { title?: string; kind?: 'one_shot' | 'ongoing' }): unknown
-}
-
-/**
  * One store per process, opened at the database the lifecycle server was
  * started with. The shared singleton from serverStore.ts is imported
  * dynamically inside the handlers so the client bundle stays node-free.
  */
-async function getStore(): Promise<GoalStore> {
+async function getStore(): Promise<DomainStore> {
   const { getServerStore } = await import('./serverStore')
-  return (await getServerStore()) as unknown as GoalStore
+  return getServerStore()
 }
 
 async function goalsSnapshot(): Promise<GoalsData> {
@@ -71,7 +47,7 @@ async function goalsSnapshot(): Promise<GoalsData> {
 
 /** Runs a domain change and answers with a fresh snapshot or a factual error. */
 async function withGoals(
-  run: (store: GoalStore) => unknown | Promise<unknown>,
+  run: (store: DomainStore) => unknown | Promise<unknown>,
 ): Promise<GoalsActionResult> {
   try {
     const store = await getStore()

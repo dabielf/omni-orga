@@ -54,8 +54,7 @@ export const createTaskAction = createServerFn({ method: 'POST' })
   .handler(async ({ data }): Promise<TasksActionResult> => {
     const { withStore, localDay } = await import('./serverStore')
     return withStore((store) => {
-      // createTask answers the freshly created task.
-      const task = store.createTask(data.task) as Task
+      const task = store.createTask(data.task)
       if (data.planForToday) {
         store.planTask(task.id, localDay())
       }
