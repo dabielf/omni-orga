@@ -1,5 +1,6 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import '../calendar-stats.css'
+import { loadFreshData } from '../lib/loadFreshData'
 
 import { AppShell, EmptyState, Page } from '../components/AppShell'
 import { useCanonicalUrl } from '../components/useCanonicalUrl'
@@ -17,8 +18,8 @@ import {
 export const Route = createFileRoute('/stats')({
   validateSearch: sanitizeStatsSearch,
   loaderDeps: ({ search }) => ({ period: search.period }),
-  loader: ({ deps }) =>
-    loadStatsData({ data: { period: deps.period ?? '30' } }),
+  loader: context =>
+    loadFreshData(() => loadStatsData({ data: { period: context.deps.period ?? '30' } }), context),
   component: StatsPage,
 })
 
@@ -57,7 +58,7 @@ function StatsPage() {
               search={link.search}
               activeOptions={{ exact: true }}
               aria-current={
-                (search.period ?? '30') === link.period ? 'page' : undefined
+                data.period === link.period ? 'page' : undefined
               }
             >
               {link.label}
